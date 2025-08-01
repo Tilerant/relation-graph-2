@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 import { useGraphStore } from '../../store/graph-store';
 import { GraphNode } from './nodes/GraphNode';
 import { GraphEdge } from './edges/GraphEdge';
+import { FloatingToolbar } from './FloatingToolbar';
 import type { Node, Edge } from '../../types/structure';
 
 // 自定义节点类型
@@ -71,9 +72,16 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
     selectEdge,
     clearSelection,
     openRightPanel,
+    selectedNodeIds,
   } = useGraphStore();
 
   const currentView = getCurrentView();
+  
+  // 漂浮工具栏状态
+  const [floatingToolbar, setFloatingToolbar] = React.useState<{
+    nodeId: string;
+    position: { x: number; y: number };
+  } | null>(null);
 
   // 转换数据为React Flow格式
   const { nodes, edges } = useMemo(() => {
@@ -135,8 +143,29 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: FlowNode) => {
       selectNode(node.id);
+      
+      // 右键点击显示工具栏
+      if (event.button === 2 || event.ctrlKey) {
+        event.preventDefault();
+        setFloatingToolbar({
+          nodeId: node.id,
+          position: { x: event.clientX, y: event.clientY }
+        });
+      }
     },
     [selectNode]
+  );
+
+  // 节点右键菜单处理
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: FlowNode) => {
+      event.preventDefault();
+      setFloatingToolbar({
+        nodeId: node.id,
+        position: { x: event.clientX, y: event.clientY }
+      });
+    },
+    []
   );
 
   // 节点双击处理 - 打开详情面板
@@ -158,6 +187,7 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
   // 画布点击处理 - 清除选择
   const onPaneClick = useCallback(() => {
     clearSelection();
+    setFloatingToolbar(null); // 关闭工具栏
   }, [clearSelection]);
 
   // 节点拖拽结束处理
@@ -199,6 +229,7 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onNodeContextMenu={onNodeContextMenu}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onNodeDragStop={onNodeDragStop}
@@ -224,6 +255,15 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
           nodeBorderRadius={2}
         />
       </ReactFlow>
+
+      {/* 漂浮工具栏 */}
+      {floatingToolbar && (
+        <FloatingToolbar
+          nodeId={floatingToolbar.nodeId}
+          position={floatingToolbar.position}
+          onClose={() => setFloatingToolbar(null)}
+        />
+      )}
     </div>
   );
 };
