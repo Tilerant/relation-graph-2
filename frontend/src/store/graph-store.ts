@@ -9,11 +9,10 @@ import type {
   Block, 
   View, 
   EntityId,
-  NodeDisplayMode,
-  EdgeDisplayMode,
   NodeViewConfig,
   EdgeViewConfig
 } from '../types/structure';
+import { NodeDisplayMode, EdgeDisplayMode } from '../types/structure';
 import { commandSystem } from '../core/command-system';
 
 // Store 状态接口

@@ -9,12 +9,10 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
-  Connection,
-  Edge as FlowEdge,
-  Node as FlowNode,
   ConnectionMode,
   ReactFlowProvider,
 } from '@xyflow/react';
+import type { Connection, Edge as FlowEdge, Node as FlowNode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphStore } from '../../store/graph-store';
@@ -174,7 +172,7 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
   if (!currentKnowledgeBase || !currentView) {
     return (
       <div className={`flex items-center justify-center h-full ${className}`}>
-        <p className=\"text-gray-500\">请选择一个知识库和视图</p>
+        <p className="text-gray-500">请选择一个知识库和视图</p>
       </div>
     );
   }

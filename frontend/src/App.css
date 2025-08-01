@@ -2,12 +2,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+/* 移除了限制性的 #root 样式，使用 index.css 中的全屏样式 */
 
 .logo {
   height: 6em;

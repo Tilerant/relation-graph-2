@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { 
-  EdgeProps, 
   getBezierPath, 
   EdgeLabelRenderer,
   BaseEdge 
 } from '@xyflow/react';
+import type { EdgeProps } from '@xyflow/react';
 import { useGraphStore } from '../../../store/graph-store';
 import { EdgeDisplayMode } from '../../../types/structure';
 import type { Edge } from '../../../types/structure';
@@ -258,23 +258,23 @@ const CardEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
             }`}
           >
             {/* 语义标签 */}
-            <div className=\"px-2 py-1 border-b border-gray-100\">
-              <div className=\"text-xs font-medium text-gray-900 truncate\">
+            <div className="px-2 py-1 border-b border-gray-100">
+              <div className="text-xs font-medium text-gray-900 truncate">
                 {edge.meta.semanticLabel}
               </div>
             </div>
             
             {/* 内容块预览 */}
             {viewConfig.showBlocks && edge.blocks.length > 0 && (
-              <div className=\"px-2 py-1 space-y-1\">
+              <div className="px-2 py-1 space-y-1">
                 {edge.blocks.slice(0, 2).map((block, index) => (
-                  <div key={block.id} className=\"text-xs text-gray-600 truncate\">
+                  <div key={block.id} className="text-xs text-gray-600 truncate">
                     {renderBlockPreview(block)}
                   </div>
                 ))}
                 
                 {edge.blocks.length > 2 && (
-                  <div className=\"text-xs text-gray-400 italic\">
+                  <div className="text-xs text-gray-400 italic">
                     +{edge.blocks.length - 2} 更多
                   </div>
                 )}
@@ -283,8 +283,8 @@ const CardEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
             
             {/* 超边指示器 */}
             {edge.meta.isHyperEdge && (
-              <div className=\"px-2 pb-1\">
-                <span className=\"inline-block px-1 py-0.5 text-xs bg-purple-100 text-purple-800 rounded\">
+              <div className="px-2 pb-1">
+                <span className="inline-block px-1 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">
                   超边
                 </span>
               </div>
