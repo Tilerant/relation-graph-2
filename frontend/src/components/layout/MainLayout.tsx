@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { WhiteboardView } from '../graph/WhiteboardView';
 import { WebPageView } from '../editor/WebPageView';
 import { useGraphStore } from '../../store/graph-store';
+import { NodeDisplayMode } from '../../types/structure';
 
 // 侧边栏项目类型
 interface SidebarItem {
@@ -31,11 +32,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     currentKnowledgeBase,
     rightPanelOpen,
     closeRightPanel,
+    setNodeViewConfig,
   } = useGraphStore();
 
   const [activeSidebarItem, setActiveSidebarItem] = useState<string>('explorer');
   const [leftPanelWidth, setLeftPanelWidth] = useState(250);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
+
+  // 切换所有节点的显示模式
+  const switchAllNodesMode = (mode: 'card' | 'box' | 'dot') => {
+    if (!currentKnowledgeBase) return;
+    
+    const displayMode = mode === 'card' ? NodeDisplayMode.CARD : 
+                       mode === 'box' ? NodeDisplayMode.BOX : 
+                       NodeDisplayMode.DOT;
+    
+    Object.keys(currentKnowledgeBase.nodes).forEach(nodeId => {
+      setNodeViewConfig(nodeId, { displayMode });
+    });
+  };
 
   // 渲染左侧边栏
   const renderSidebar = () => (
@@ -141,6 +156,31 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
                 🔍 图分析
               </button>
+              
+              {/* 节点显示模式切换 */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs font-semibold text-gray-600 mb-2">节点显示模式</h4>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => switchAllNodesMode('card')}
+                    className="w-full px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors"
+                  >
+                    📋 卡片模式
+                  </button>
+                  <button
+                    onClick={() => switchAllNodesMode('box')}
+                    className="w-full px-3 py-1 text-xs bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    📦 框模式
+                  </button>
+                  <button
+                    onClick={() => switchAllNodesMode('dot')}
+                    className="w-full px-3 py-1 text-xs bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    ⚫ 圆点模式
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );

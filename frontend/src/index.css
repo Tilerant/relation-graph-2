@@ -45,8 +45,9 @@ html, body {
   cursor: pointer;
 }
 
+/* 移除React Flow默认选中样式，使用我们自定义的样式 */
 .react-flow__node.selected {
-  box-shadow: 0 0 0 2px #3b82f6;
+  box-shadow: none !important;
 }
 
 /* 自定义边样式 */
@@ -59,6 +60,13 @@ html, body {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

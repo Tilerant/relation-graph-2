@@ -90,10 +90,10 @@ const CardNode: React.FC<{
             : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
         }`}
         style={{ 
-          width: width,
+          width: Math.max(width, 200),
           minHeight: height,
-          maxWidth: 400,
-          minWidth: 150
+          maxWidth: 500,
+          minWidth: 180
         }}
       >
         {/* 标题栏 */}
@@ -107,10 +107,10 @@ const CardNode: React.FC<{
         
         {/* 内容区域 */}
         {showBlocks && !isCollapsed && (
-          <div className="p-3 space-y-2 overflow-hidden">
+          <div className="p-3 space-y-2 overflow-hidden" style={{ maxHeight: '200px' }}>
             {node.blocks.slice(0, 3).map((block, index) => (
-              <div key={block.id} className="text-xs text-gray-600 line-clamp-2">
-                {renderBlockPreview(block)}
+              <div key={block.id} className="text-xs text-gray-600 break-words">
+                <div className="line-clamp-3">{renderBlockPreview(block)}</div>
               </div>
             ))}
             

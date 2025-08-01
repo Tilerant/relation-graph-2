@@ -163,10 +163,22 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
   // 节点拖拽结束处理
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: FlowNode) => {
-      // TODO: 通过命令系统更新节点位置
-      console.log('Node dragged:', node.id, node.position);
+      if (!currentView) return;
+      
+      // 更新视图中的节点位置
+      const updatedLayout = {
+        ...currentView.layout,
+        nodePositions: {
+          ...currentView.layout.nodePositions,
+          [node.id]: node.position
+        }
+      };
+      
+      // 更新视图布局
+      const { updateView } = useGraphStore.getState();
+      updateView(currentView.id, { layout: updatedLayout });
     },
-    []
+    [currentView]
   );
 
   if (!currentKnowledgeBase || !currentView) {

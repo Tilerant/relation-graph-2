@@ -1,6 +1,6 @@
 // 网页视图组件 - 简化版文本编辑器
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGraphStore } from '../../store/graph-store';
 import type { Node, Block } from '../../types/structure';
 
@@ -17,6 +17,9 @@ export const WebPageView: React.FC<WebPageViewProps> = ({ className }) => {
     updateEdge,
   } = useGraphStore();
 
+  // 本地状态管理文本内容
+  const [textValue, setTextValue] = useState('');
+
   // 获取当前编辑的实体
   const currentEntity = useMemo(() => {
     if (!rightPanelContent.entityId) return null;
@@ -30,37 +33,44 @@ export const WebPageView: React.FC<WebPageViewProps> = ({ className }) => {
     return null;
   }, [rightPanelContent, getNode, getEdge]);
 
-  // 获取文本内容
-  const textContent = useMemo(() => {
-    if (!currentEntity) return '';
+  // 当实体变化时，更新本地文本状态
+  useEffect(() => {
+    if (!currentEntity) {
+      setTextValue('');
+      return;
+    }
     
-    return currentEntity.blocks
-      .filter(block => block.type === 'text')
-      .map(block => block.content)
-      .join('\n\n');
+    const textBlocks = currentEntity.blocks.filter(block => block.type === 'text');
+    const content = textBlocks.map(block => block.content).join('\n\n');
+    setTextValue(content);
   }, [currentEntity]);
 
   // 处理文本变更
-  const handleTextChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newText = event.target.value;
+    setTextValue(newText); // 立即更新本地状态
+    
     if (!currentEntity || !rightPanelContent.entityId) return;
 
-    const newText = event.target.value;
-    const paragraphs = newText.split('\n\n').filter(p => p.trim());
-    
-    const newBlocks: Block[] = paragraphs.map((content, index) => ({
-      id: `block_${Date.now()}_${index}`,
-      type: 'text',
-      content: content.trim(),
-      properties: {},
-      order: index,
-    }));
+    // 创建新的块数据
+    const paragraphs = newText.split('\n\n');
+    const newBlocks: Block[] = paragraphs
+      .filter(p => p.trim()) // 过滤空段落
+      .map((content, index) => ({
+        id: `block_${currentEntity.meta.id}_${index}`,
+        type: 'text',
+        content: content.trim(),
+        properties: {},
+        order: index,
+      }));
 
+    // 更新实体
     if (rightPanelContent.type === 'node') {
       updateNode(rightPanelContent.entityId, { blocks: newBlocks });
     } else if (rightPanelContent.type === 'edge') {
       updateEdge(rightPanelContent.entityId, { blocks: newBlocks });
     }
-  }, [currentEntity, rightPanelContent, updateNode, updateEdge]);
+  };
 
   if (!rightPanelContent.entityId || !currentEntity) {
     return (
@@ -104,34 +114,32 @@ export const WebPageView: React.FC<WebPageViewProps> = ({ className }) => {
             )}
           </div>
           
-          {/* 操作按钮 */}
-          <div className="flex items-center space-x-2">
-            <button 
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              title="保存"
-            >
-              💾
-            </button>
-            <button 
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              title="更多选项"
-            >
-              ⋯
-            </button>
+          {/* 调试信息 */}
+          <div className="text-xs text-gray-400">
+            文本长度: {textValue.length}
           </div>
         </div>
       </div>
 
       {/* 编辑器区域 */}
       <div className="flex-1 p-4">
-        <textarea
-          value={textContent}
-          onChange={handleTextChange}
-          className="w-full h-full p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="在这里编辑内容...
+        <div className="h-full flex flex-col space-y-4">
+          {/* 调试信息 */}
+          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+            <p>当前实体ID: {currentEntity.meta.id}</p>
+            <p>块数量: {currentEntity.blocks.length}</p>
+            <p>文本值长度: {textValue.length}</p>
+          </div>
+          
+          <textarea
+            value={textValue}
+            onChange={handleTextChange}
+            className="flex-1 p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="在这里编辑内容...
 
 支持多段落编辑，用空行分隔段落。"
-        />
+          />
+        </div>
       </div>
       
       {/* 状态栏 */}
