@@ -33,8 +33,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     rightPanelOpen,
     closeRightPanel,
     setNodeViewConfig,
+    createNewKnowledgeBase,
   } = useGraphStore();
-
+   
   const [activeSidebarItem, setActiveSidebarItem] = useState<string>('explorer');
   const [leftPanelWidth, setLeftPanelWidth] = useState(250);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
@@ -50,6 +51,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     Object.keys(currentKnowledgeBase.nodes).forEach(nodeId => {
       setNodeViewConfig(nodeId, { displayMode });
     });
+  };
+
+  // 创建新知识库
+  const handleCreateKnowledgeBase = async () => {
+    const name = prompt('请输入知识库名称:');
+    if (name && name.trim()) {
+      try {
+        await createNewKnowledgeBase(name.trim(), '新创建的知识库');
+      } catch (error) {
+        alert('创建知识库失败: ' + (error instanceof Error ? error.message : '未知错误'));
+      }
+    }
   };
 
   // 渲染左侧边栏
@@ -116,7 +129,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             ) : (
               <div className="text-center text-gray-500 py-8">
                 <p className="mb-3">暂无知识库</p>
-                <button className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">
+                <button 
+                  onClick={handleCreateKnowledgeBase}
+                  className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                >
                   创建知识库
                 </button>
               </div>

@@ -14,6 +14,7 @@ import type {
 } from '../types/structure';
 import { NodeDisplayMode, EdgeDisplayMode } from '../types/structure';
 import { commandSystem } from '../core/command-system';
+import { knowledgeBaseApi, nodeApi } from '../services/api';
 
 // Store 状态接口
 interface GraphState {
@@ -46,8 +47,9 @@ interface GraphState {
 // Store Actions 接口
 interface GraphActions {
   // 知识库操作
-  loadKnowledgeBase: (kb: KnowledgeBase) => void;
-  createNewKnowledgeBase: (name: string) => Promise<void>;
+  loadKnowledgeBase: (kbId: string) => Promise<void>;
+  createNewKnowledgeBase: (name: string, description?: string) => Promise<void>;
+  saveKnowledgeBase: () => Promise<void>;
   
   // 视图操作
   setCurrentView: (viewId: EntityId) => void;
@@ -129,41 +131,65 @@ export const useGraphStore = create<GraphState & GraphActions>()(
       ...createInitialState(),
 
       // 知识库操作
-      loadKnowledgeBase: (kb) => {
-        set({ 
-          currentKnowledgeBase: kb,
-          currentViewId: kb.mainViewId,
-          selectedNodeIds: new Set(),
-          selectedEdgeIds: new Set(),
-          error: null
-        });
-      },
-
-      createNewKnowledgeBase: async (name) => {
-        set({ isLoading: true });
+      loadKnowledgeBase: async (kbId) => {
+        set({ isLoading: true, error: null });
         try {
-          // TODO: 通过命令系统创建新知识库
-          const newKb: KnowledgeBase = {
-            id: `kb_${Date.now()}`,
-            name,
-            description: '',
-            mainViewId: `view_${Date.now()}`,
-            nodes: {},
-            edges: {},
-            views: {},
-            blocks: {},
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          
+          const kb = await knowledgeBaseApi.get(kbId);
           set({ 
-            currentKnowledgeBase: newKb,
-            currentViewId: newKb.mainViewId,
-            isLoading: false
+            currentKnowledgeBase: kb,
+            currentViewId: kb.mainViewId,
+            selectedNodeIds: new Set(),
+            selectedEdgeIds: new Set(),
+            isLoading: false,
+            error: null
           });
         } catch (error) {
           set({ 
-            error: error instanceof Error ? error.message : String(error),
+            error: error instanceof Error ? error.message : '加载知识库失败',
+            isLoading: false
+          });
+        }
+      },
+
+      createNewKnowledgeBase: async (name, description = '') => {
+        console.log('🏗️ 开始创建知识库:', name);
+        set({ isLoading: true, error: null });
+        try {
+          const newKb = await knowledgeBaseApi.create(name, description);
+          console.log('✅ 知识库创建成功:', newKb);
+          set({ 
+            currentKnowledgeBase: newKb,
+            currentViewId: newKb.mainViewId,
+            selectedNodeIds: new Set(),
+            selectedEdgeIds: new Set(),
+            isLoading: false,
+            error: null
+          });
+        } catch (error) {
+          console.error('❌ 创建知识库失败:', error);
+          set({ 
+            error: error instanceof Error ? error.message : '创建知识库失败',
+            isLoading: false
+          });
+          throw error; // 重新抛出错误以便 UI 处理
+        }
+      },
+
+      saveKnowledgeBase: async () => {
+        const { currentKnowledgeBase } = get();
+        if (!currentKnowledgeBase) return;
+
+        set({ isLoading: true, error: null });
+        try {
+          const updatedKb = await knowledgeBaseApi.update(currentKnowledgeBase.id, currentKnowledgeBase);
+          set({ 
+            currentKnowledgeBase: updatedKb,
+            isLoading: false,
+            error: null
+          });
+        } catch (error) {
+          set({ 
+            error: error instanceof Error ? error.message : '保存知识库失败',
             isLoading: false
           });
         }
@@ -309,19 +335,26 @@ export const useGraphStore = create<GraphState & GraphActions>()(
       updateNode: (nodeId, updates) => {
         set((state) => {
           if (!state.currentKnowledgeBase) return state;
-          return {
-            currentKnowledgeBase: {
-              ...state.currentKnowledgeBase,
-              nodes: {
-                ...state.currentKnowledgeBase.nodes,
-                [nodeId]: {
-                  ...state.currentKnowledgeBase.nodes[nodeId],
-                  ...updates
+          const updatedKb = {
+            ...state.currentKnowledgeBase,
+            nodes: {
+              ...state.currentKnowledgeBase.nodes,
+              [nodeId]: {
+                ...state.currentKnowledgeBase.nodes[nodeId],
+                ...updates,
+                meta: {
+                  ...state.currentKnowledgeBase.nodes[nodeId].meta,
+                  updatedAt: Date.now()
                 }
-              },
-              updatedAt: Date.now()
-            }
+              }
+            },
+            updatedAt: Date.now()
           };
+          
+          // 异步保存到后端
+          knowledgeBaseApi.update(updatedKb.id, updatedKb).catch(console.error);
+          
+          return { currentKnowledgeBase: updatedKb };
         });
       },
 

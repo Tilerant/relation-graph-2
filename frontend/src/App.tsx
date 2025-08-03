@@ -1,176 +1,73 @@
 import React, { useEffect } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
 import { useGraphStore } from './store/graph-store';
-import type { KnowledgeBase, Node, Edge, Block, View } from './types/structure';
+import { healthCheck } from './services/api';
 import './App.css';
 
-// 创建示例数据
-const createSampleKnowledgeBase = (): KnowledgeBase => {
-  const now = Date.now();
-  
-  // 创建示例节点
-  const node1: Node = {
-    meta: {
-      id: 'node_1',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: ['概念'],
-      entityLabel: '核心概念'
-    },
-    properties: {},
-    title: '图谱系统',
-    blocks: [
-      {
-        id: 'block_1',
-        type: 'text',
-        content: '这是一个以结构为核心的图谱笔记系统，支持节点、边、块的结构化表达。',
-        properties: {},
-        order: 0
-      }
-    ]
-  };
-
-  const node2: Node = {
-    meta: {
-      id: 'node_2',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: ['组件'],
-      entityLabel: '技术组件'
-    },
-    properties: {},
-    title: 'React Flow',
-    blocks: [
-      {
-        id: 'block_2',
-        type: 'text',
-        content: '用于构建白板视图的React组件库，支持节点拖拽和连接。',
-        properties: {},
-        order: 0
-      }
-    ]
-  };
-
-  const node3: Node = {
-    meta: {
-      id: 'node_3',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: ['组件'],
-      entityLabel: '技术组件'
-    },
-    properties: {},
-    title: 'Plate.js',
-    blocks: [
-      {
-        id: 'block_3',
-        type: 'text',
-        content: '用于构建富文本编辑器的React插件化框架。',
-        properties: {},
-        order: 0
-      }
-    ]
-  };
-
-  // 创建示例边
-  const edge1: Edge = {
-    meta: {
-      id: 'edge_1',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: [],
-      semanticLabel: '依赖于',
-      isHyperEdge: false
-    },
-    properties: {},
-    sourceNodeId: 'node_1',
-    targetNodeId: 'node_2',
-    blocks: []
-  };
-
-  const edge2: Edge = {
-    meta: {
-      id: 'edge_2',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: [],
-      semanticLabel: '依赖于',
-      isHyperEdge: false
-    },
-    properties: {},
-    sourceNodeId: 'node_1',
-    targetNodeId: 'node_3',
-    blocks: []
-  };
-
-  // 创建主视图
-  const mainView: View = {
-    id: 'view_main',
-    name: '主视图',
-    type: 'whiteboard',
-    nodeIds: ['node_1', 'node_2', 'node_3'],
-    edgeIds: ['edge_1', 'edge_2'],
-    layout: {
-      nodePositions: {
-        'node_1': { x: 100, y: 100 },
-        'node_2': { x: 300, y: 50 },
-        'node_3': { x: 300, y: 150 }
-      },
-      nodeStyles: {},
-      edgeStyles: {}
-    },
-    query: undefined,
-    isTemporary: false,
-    properties: {},
-    createdAt: now,
-    updatedAt: now
-  };
-
-  // 创建知识库
-  const knowledgeBase: KnowledgeBase = {
-    id: 'kb_sample',
-    name: '示例知识库',
-    description: '演示图谱系统功能的示例知识库',
-    mainViewId: 'view_main',
-    nodes: {
-      'node_1': node1,
-      'node_2': node2,
-      'node_3': node3
-    },
-    edges: {
-      'edge_1': edge1,
-      'edge_2': edge2
-    },
-    views: {
-      'view_main': mainView
-    },
-    blocks: {
-      'block_1': node1.blocks[0],
-      'block_2': node2.blocks[0],
-      'block_3': node3.blocks[0]
-    },
-    createdAt: now,
-    updatedAt: now
-  };
-
-  return knowledgeBase;
+// 检查后端连接状态
+const checkBackendHealth = async () => {
+  console.log('🔍 检查后端连接状态...');
+  try {
+    const result = await healthCheck.check();
+    console.log('✅ 后端连接成功:', result);
+    return true;
+  } catch (error) {
+    console.error('❌ 后端连接失败:', error);
+    console.log('💡 请确保后端服务运行在 http://localhost:3001');
+    return false;
+  }
 };
 
 function App() {
-  const { loadKnowledgeBase, currentKnowledgeBase } = useGraphStore();
+  const { loadKnowledgeBase, currentKnowledgeBase, error, isLoading } = useGraphStore();
 
-  // 应用启动时加载示例数据
+  // 应用启动时检查后端并加载数据
   useEffect(() => {
-    if (!currentKnowledgeBase) {
-      const sampleKB = createSampleKnowledgeBase();
-      loadKnowledgeBase(sampleKB);
-    }
+    const initApp = async () => {
+      // 检查后端连接
+      const backendOk = await checkBackendHealth();
+      
+      if (backendOk && !currentKnowledgeBase) {
+        try {
+          // 尝试加载示例知识库
+          await loadKnowledgeBase('kb_sample');
+        } catch (error) {
+          console.log('示例知识库不存在，可能需要初始化后端数据');
+        }
+      }
+    };
+
+    initApp();
   }, [loadKnowledgeBase, currentKnowledgeBase]);
+
+  // 显示错误状态
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">连接错误</h1>
+          <p className="text-gray-700 mb-4">{error}</p>
+          <div className="text-sm text-gray-500">
+            <p>请确保后端服务正在运行：</p>
+            <code className="bg-gray-200 px-2 py-1 rounded">cd backend && python main.py</code>
+            <p className="mt-2">服务地址: http://localhost:3014</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 显示加载状态
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-700">正在加载图谱系统...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="App">
