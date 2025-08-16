@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useGraphStore } from '../../store/graph-store';
+import { updateNodeCommand } from '../../core/node-commands';
+import { updateEdgeCommand } from '../../core/edge-commands';
 import type { Node, Block } from '../../types/structure';
 
 interface WebPageViewProps {
@@ -13,12 +15,11 @@ export const WebPageView: React.FC<WebPageViewProps> = ({ className }) => {
     rightPanelContent,
     getNode,
     getEdge,
-    updateNode,
-    updateEdge,
   } = useGraphStore();
 
   // 本地状态管理文本内容
   const [textValue, setTextValue] = useState('');
+  const [titleValue, setTitleValue] = useState('');
 
   // 获取当前编辑的实体
   const currentEntity = useMemo(() => {
@@ -37,38 +38,91 @@ export const WebPageView: React.FC<WebPageViewProps> = ({ className }) => {
   useEffect(() => {
     if (!currentEntity) {
       setTextValue('');
+      setTitleValue('');
       return;
+    }
+    
+    // 设置标题
+    if (rightPanelContent.type === 'node') {
+      setTitleValue((currentEntity as Node).title || '');
     }
     
     const textBlocks = currentEntity.blocks.filter(block => block.type === 'text');
     const content = textBlocks.map(block => block.content).join('\n\n');
     setTextValue(content);
-  }, [currentEntity]);
+  }, [currentEntity, rightPanelContent.type]);
+
+  // 处理标题变更
+  const handleTitleChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = event.target.value;
+    setTitleValue(newTitle); // 立即更新本地状态
+    
+    if (!currentEntity || !rightPanelContent.entityId || rightPanelContent.type !== 'node') return;
+
+    try {
+      // 使用命令模式更新节点标题
+      const result = await updateNodeCommand(rightPanelContent.entityId, { title: newTitle });
+      
+      if (!result.success) {
+        console.error('❌ 标题更新失败:', result.error);
+        // 回滚本地状态
+        setTitleValue((currentEntity as Node).title || '');
+      }
+    } catch (error) {
+      console.error('❌ 标题更新失败:', error);
+      // 回滚本地状态
+      setTitleValue((currentEntity as Node).title || '');
+    }
+  };
 
   // 处理文本变更
-  const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleTextChange = async (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
     setTextValue(newText); // 立即更新本地状态
     
     if (!currentEntity || !rightPanelContent.entityId) return;
 
-    // 创建新的块数据
-    const paragraphs = newText.split('\n\n');
-    const newBlocks: Block[] = paragraphs
-      .filter(p => p.trim()) // 过滤空段落
-      .map((content, index) => ({
-        id: `block_${currentEntity.meta.id}_${index}`,
-        type: 'text',
-        content: content.trim(),
-        properties: {},
-        order: index,
-      }));
+    try {
+      // 创建新的块数据
+      const paragraphs = newText.split('\n\n');
+      const newBlocks: Block[] = paragraphs
+        .filter(p => p.trim()) // 过滤空段落
+        .map((content, index) => ({
+          id: `block_${currentEntity.meta.id}_${index}`,
+          type: 'text',
+          content: content.trim(),
+          properties: {},
+          order: index,
+        }));
 
-    // 更新实体
-    if (rightPanelContent.type === 'node') {
-      updateNode(rightPanelContent.entityId, { blocks: newBlocks });
-    } else if (rightPanelContent.type === 'edge') {
-      updateEdge(rightPanelContent.entityId, { blocks: newBlocks });
+      // 使用命令模式更新实体
+      if (rightPanelContent.type === 'node') {
+        const result = await updateNodeCommand(rightPanelContent.entityId, { blocks: newBlocks });
+        
+        if (!result.success) {
+          console.error('❌ 节点内容更新失败:', result.error);
+          // 回滚本地状态
+          const textBlocks = currentEntity.blocks.filter(block => block.type === 'text');
+          const originalContent = textBlocks.map(block => block.content).join('\n\n');
+          setTextValue(originalContent);
+        }
+      } else if (rightPanelContent.type === 'edge') {
+        const result = await updateEdgeCommand(rightPanelContent.entityId, { blocks: newBlocks });
+        
+        if (!result.success) {
+          console.error('❌ 边内容更新失败:', result.error);
+          // 回滚本地状态
+          const textBlocks = currentEntity.blocks.filter(block => block.type === 'text');
+          const originalContent = textBlocks.map(block => block.content).join('\n\n');
+          setTextValue(originalContent);
+        }
+      }
+    } catch (error) {
+      console.error('❌ 内容更新失败:', error);
+      // 回滚本地状态
+      const textBlocks = currentEntity.blocks.filter(block => block.type === 'text');
+      const originalContent = textBlocks.map(block => block.content).join('\n\n');
+      setTextValue(originalContent);
     }
   };
 
@@ -92,9 +146,13 @@ export const WebPageView: React.FC<WebPageViewProps> = ({ className }) => {
           <div className="flex-1">
             {rightPanelContent.type === 'node' && (
               <>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {(currentEntity as Node).title || '无标题节点'}
-                </h2>
+                <input
+                  type="text"
+                  value={titleValue}
+                  onChange={handleTitleChange}
+                  className="text-lg font-semibold text-gray-900 bg-transparent border-none outline-none focus:bg-white focus:border focus:border-blue-300 focus:rounded px-1 py-1 w-full"
+                  placeholder="节点标题"
+                />
                 <p className="text-sm text-gray-500">
                   {(currentEntity as Node).meta.entityLabel} • {(currentEntity as Node).blocks.length} 个内容块
                 </p>

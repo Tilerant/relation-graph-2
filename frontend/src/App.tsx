@@ -1,6 +1,11 @@
 import React, { useEffect } from 'react';
 import { MainLayout } from './components/layout/MainLayout';
 import { useGraphStore } from './store/graph-store';
+import { registerNodeCommands } from './core/node-commands';
+import { registerEdgeCommands } from './core/edge-commands';
+import { registerBlockCommands } from './core/block-commands';
+import { registerViewCommands } from './core/view-commands';
+import { keyboardHandler } from './core/keyboard-handler';
 import type { KnowledgeBase, Node, Edge, Block, View } from './types/structure';
 import './App.css';
 
@@ -164,12 +169,28 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
 function App() {
   const { loadKnowledgeBase, currentKnowledgeBase } = useGraphStore();
 
-  // 应用启动时加载示例数据
+  // 应用启动时初始化
   useEffect(() => {
+    // 注册所有命令处理器
+    registerNodeCommands();
+    registerEdgeCommands();
+    registerBlockCommands();
+    registerViewCommands();
+    
+    // 初始化键盘处理器（已在模块加载时初始化）
+    console.log('⌨️ 键盘快捷键已启用: Ctrl+Z(撤销), Ctrl+Y(重做)');
+    console.log('🎯 命令系统已初始化: 所有增删改操作支持撤销/重做');
+    
+    // 加载示例数据
     if (!currentKnowledgeBase) {
       const sampleKB = createSampleKnowledgeBase();
       loadKnowledgeBase(sampleKB);
     }
+
+    // 清理函数
+    return () => {
+      keyboardHandler.destroy();
+    };
   }, [loadKnowledgeBase, currentKnowledgeBase]);
 
   return (

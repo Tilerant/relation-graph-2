@@ -45,6 +45,7 @@ export interface UpdateNodePayload {
   title?: string;
   properties?: DynamicProperties;
   entityLabel?: string;
+  blocks?: Block[];
 }
 
 export interface DeleteNodePayload {
@@ -64,6 +65,7 @@ export interface UpdateEdgePayload {
   edgeId: EntityId;
   properties?: DynamicProperties;
   semanticLabel?: string;
+  blocks?: Block[];
 }
 
 export interface DeleteEdgePayload {

@@ -136,6 +136,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <div className="mt-4 text-sm text-gray-500">
               搜索结果将在这里显示
             </div>
+            
+            {/* 使用提示 */}
+            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+              <h4 className="text-xs font-semibold text-blue-800 mb-2">快速操作</h4>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">双击</kbd> 白板创建节点</div>
+                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">右键</kbd> 节点显示工具栏</div>
+                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">双击</kbd> 节点打开编辑</div>
+                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">拖拽</kbd> 连接点创建连线</div>
+              </div>
+            </div>
           </div>
         );
 

@@ -11,6 +11,7 @@ import {
   addEdge,
   ConnectionMode,
   ReactFlowProvider,
+  useReactFlow,
 } from '@xyflow/react';
 import type { Connection, Edge as FlowEdge, Node as FlowNode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -19,7 +20,10 @@ import { useGraphStore } from '../../store/graph-store';
 import { GraphNode } from './nodes/GraphNode';
 import { GraphEdge } from './edges/GraphEdge';
 import { FloatingToolbar } from './FloatingToolbar';
-import type { Node, Edge } from '../../types/structure';
+import { createNodeCommand } from '../../core/node-commands';
+import { createEdgeCommand } from '../../core/edge-commands';
+import { updateNodePositionCommand } from '../../core/view-commands';
+import type { Node, Edge, Block, EntityId } from '../../types/structure';
 
 // 自定义节点类型
 const nodeTypes = {
@@ -75,6 +79,8 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
     selectedNodeIds,
   } = useGraphStore();
 
+  const { screenToFlowPosition } = useReactFlow();
+
   const currentView = getCurrentView();
   
   // 漂浮工具栏状态
@@ -82,6 +88,10 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
     nodeId: string;
     position: { x: number; y: number };
   } | null>(null);
+
+  // 双击检测状态
+  const [lastClickTime, setLastClickTime] = React.useState(0);
+  const [lastClickPosition, setLastClickPosition] = React.useState({ x: 0, y: 0 });
 
   // 转换数据为React Flow格式
   const { nodes, edges } = useMemo(() => {
@@ -132,11 +142,31 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
 
   // 连接处理
   const onConnect = useCallback(
-    (params: Connection) => {
-      setEdges((eds) => addEdge(params, eds));
-      // TODO: 通过命令系统创建边
+    async (params: Connection) => {
+      if (!params.source || !params.target || !currentView) return;
+      
+      try {
+        // 使用命令模式创建边
+        const result = await createEdgeCommand(params.source, params.target, '关联');
+        
+        if (result.success) {
+          console.log('✅ 边创建成功:', result.data?.edgeId);
+          
+          // 同时更新React Flow的边状态
+          setEdges((eds) => addEdge({
+            id: result.data.edgeId,
+            source: params.source,
+            target: params.target,
+            type: 'graphEdge'
+          }, eds));
+        } else {
+          console.error('❌ 边创建失败:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ 边创建失败:', error);
+      }
     },
-    [setEdges]
+    [currentView, setEdges]
   );
 
   // 节点点击处理
@@ -184,29 +214,79 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
     [selectEdge]
   );
 
-  // 画布点击处理 - 清除选择
-  const onPaneClick = useCallback(() => {
+  // 画布点击处理 - 清除选择或双击创建节点
+  const onPaneClick = useCallback(async (event: React.MouseEvent) => {
+    const currentTime = Date.now();
+    const currentPosition = { x: event.clientX, y: event.clientY };
+    
+    // 检测双击：两次点击间隔小于300ms且位置接近
+    const timeDiff = currentTime - lastClickTime;
+    const positionDiff = Math.abs(currentPosition.x - lastClickPosition.x) + 
+                        Math.abs(currentPosition.y - lastClickPosition.y);
+    
+    const isDoubleClick = timeDiff < 300 && positionDiff < 10;
+    
+    if (isDoubleClick && currentView) {
+      console.log('🎯 检测到双击!');
+      
+      try {
+        // 使用React Flow的API获取正确的坐标
+        const position = screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        console.log('📍 双击位置:', position);
+
+        // 使用命令模式创建节点
+        const result = await createNodeCommand('新节点', position, '新概念');
+        
+        if (result.success) {
+          console.log('✅ 节点创建成功:', result.data?.nodeId);
+          // 选中新创建的节点
+          selectNode(result.data.nodeId);
+        } else {
+          console.error('❌ 创建节点失败:', result.error);
+        }
+        
+        // 重置双击检测
+        setLastClickTime(0);
+        return;
+      } catch (error) {
+        console.error('❌ 创建节点失败:', error);
+      }
+    }
+    
+    // 更新点击状态
+    setLastClickTime(currentTime);
+    setLastClickPosition(currentPosition);
+    
+    // 普通点击：清除选择
     clearSelection();
-    setFloatingToolbar(null); // 关闭工具栏
-  }, [clearSelection]);
+    setFloatingToolbar(null);
+  }, [clearSelection, currentView, selectNode, screenToFlowPosition, lastClickTime, lastClickPosition]);
+
 
   // 节点拖拽结束处理
   const onNodeDragStop = useCallback(
-    (event: React.MouseEvent, node: FlowNode) => {
+    async (event: React.MouseEvent, node: FlowNode) => {
       if (!currentView) return;
       
-      // 更新视图中的节点位置
-      const updatedLayout = {
-        ...currentView.layout,
-        nodePositions: {
-          ...currentView.layout.nodePositions,
-          [node.id]: node.position
+      try {
+        // 使用命令模式更新节点位置
+        const result = await updateNodePositionCommand(
+          currentView.id,
+          node.id,
+          node.position
+        );
+        
+        if (result.success) {
+          console.log('📍 节点位置更新成功:', node.id, node.position);
+        } else {
+          console.error('❌ 节点位置更新失败:', result.error);
         }
-      };
-      
-      // 更新视图布局
-      const { updateView } = useGraphStore.getState();
-      updateView(currentView.id, { layout: updatedLayout });
+      } catch (error) {
+        console.error('❌ 节点位置更新失败:', error);
+      }
     },
     [currentView]
   );
@@ -236,6 +316,7 @@ const WhiteboardViewContent: React.FC<WhiteboardViewProps> = ({ className }) => 
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         connectionMode={ConnectionMode.Loose}
+        zoomOnDoubleClick={false}
         fitView
         fitViewOptions={{
           padding: 0.2,

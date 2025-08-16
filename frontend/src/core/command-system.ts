@@ -4,7 +4,8 @@ import type {
   Command, 
   CommandHandler, 
   CommandResult, 
-  CommandPayloadMap 
+  CommandPayloadMap,
+  EntityChange
 } from '../types/commands';
 
 // 命令注册表
@@ -52,11 +53,21 @@ export interface CommandMiddleware {
   execute: (command: Command, next: () => Promise<CommandResult>) => Promise<CommandResult>;
 }
 
+// 可撤销的命令记录
+interface UndoableCommand {
+  command: Command;
+  result: CommandResult;
+  timestamp: number;
+}
+
 // 命令执行器
 class CommandExecutor {
   private registry: CommandRegistry;
   private history: Command[] = [];
+  private undoStack: UndoableCommand[] = [];
+  private redoStack: UndoableCommand[] = [];
   private maxHistorySize = 1000;
+  private maxUndoStackSize = 100;
 
   constructor(registry: CommandRegistry) {
     this.registry = registry;
@@ -82,6 +93,13 @@ class CommandExecutor {
 
       // 执行中间件和命令处理器
       const result = await this.executeWithMiddleware(command);
+
+      // 如果命令成功且包含变更信息，添加到撤销栈
+      if (result.success && result.changes && result.changes.length > 0) {
+        this.addToUndoStack({ command, result, timestamp: Date.now() });
+        // 清空重做栈（新命令执行后不能再重做之前的操作）
+        this.redoStack = [];
+      }
 
       return result;
     } catch (error) {
@@ -116,6 +134,214 @@ class CommandExecutor {
     return next();
   }
 
+  // 撤销操作
+  async undo(): Promise<CommandResult> {
+    if (this.undoStack.length === 0) {
+      return {
+        success: false,
+        error: 'Nothing to undo'
+      };
+    }
+
+    const undoableCommand = this.undoStack.pop()!;
+    const { result } = undoableCommand;
+
+    if (!result.changes) {
+      return {
+        success: false,
+        error: 'Cannot undo: no change information available'
+      };
+    }
+
+    try {
+      // 应用反向变更
+      await this.applyReverseChanges(result.changes);
+      
+      // 移动到重做栈
+      this.redoStack.push(undoableCommand);
+      
+      // 限制重做栈大小
+      if (this.redoStack.length > this.maxUndoStackSize) {
+        this.redoStack.shift();
+      }
+
+      return {
+        success: true,
+        data: { undone: undoableCommand.command.type }
+      };
+    } catch (error) {
+      // 如果撤销失败，重新放回撤销栈
+      this.undoStack.push(undoableCommand);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  // 重做操作
+  async redo(): Promise<CommandResult> {
+    if (this.redoStack.length === 0) {
+      return {
+        success: false,
+        error: 'Nothing to redo'
+      };
+    }
+
+    const undoableCommand = this.redoStack.pop()!;
+    const { result } = undoableCommand;
+
+    if (!result.changes) {
+      return {
+        success: false,
+        error: 'Cannot redo: no change information available'
+      };
+    }
+
+    try {
+      // 重新应用变更
+      await this.applyChanges(result.changes);
+      
+      // 移动回撤销栈
+      this.undoStack.push(undoableCommand);
+
+      return {
+        success: true,
+        data: { redone: undoableCommand.command.type }
+      };
+    } catch (error) {
+      // 如果重做失败，重新放回重做栈
+      this.redoStack.push(undoableCommand);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  // 应用变更
+  private async applyChanges(changes: EntityChange[]): Promise<void> {
+    const { useGraphStore } = await import('../store/graph-store');
+    const { 
+      addNode, 
+      addEdge, 
+      updateNode, 
+      updateEdge, 
+      updateView,
+      currentKnowledgeBase 
+    } = useGraphStore.getState();
+
+    for (const change of changes) {
+      console.log('Applying change:', change);
+      
+      switch (change.entityType) {
+        case 'node':
+          if (change.type === 'create' && change.after) {
+            addNode(change.after);
+          } else if (change.type === 'update' && change.after) {
+            updateNode(change.entityId, change.after);
+          } else if (change.type === 'delete') {
+            const { removeNode } = useGraphStore.getState();
+            removeNode(change.entityId);
+          }
+          break;
+          
+        case 'edge':
+          if (change.type === 'create' && change.after) {
+            addEdge(change.after);
+          } else if (change.type === 'update' && change.after) {
+            updateEdge(change.entityId, change.after);
+          } else if (change.type === 'delete') {
+            const { removeEdge } = useGraphStore.getState();
+            removeEdge(change.entityId);
+          }
+          break;
+          
+        case 'view':
+          if (change.type === 'update' && change.after) {
+            updateView(change.entityId, change.after);
+          }
+          break;
+          
+        case 'block':
+          if (change.type === 'create' && change.after && currentKnowledgeBase) {
+            currentKnowledgeBase.blocks[change.entityId] = change.after;
+          } else if (change.type === 'delete' && currentKnowledgeBase) {
+            delete currentKnowledgeBase.blocks[change.entityId];
+          }
+          break;
+      }
+    }
+  }
+
+  // 应用反向变更
+  private async applyReverseChanges(changes: EntityChange[]): Promise<void> {
+    const { useGraphStore } = await import('../store/graph-store');
+    const { 
+      addNode, 
+      addEdge, 
+      updateNode, 
+      updateEdge, 
+      updateView,
+      removeNode,
+      removeEdge,
+      currentKnowledgeBase 
+    } = useGraphStore.getState();
+
+    // 反向应用变更（从后往前）
+    for (let i = changes.length - 1; i >= 0; i--) {
+      const change = changes[i];
+      console.log('Applying reverse change:', change);
+      
+      switch (change.entityType) {
+        case 'node':
+          if (change.type === 'create') {
+            // 创建的反向操作是删除
+            removeNode(change.entityId);
+          } else if (change.type === 'update' && change.before) {
+            // 更新的反向操作是恢复到之前的状态
+            updateNode(change.entityId, change.before);
+          } else if (change.type === 'delete' && change.before) {
+            // 删除的反向操作是重新创建
+            addNode(change.before);
+          }
+          break;
+          
+        case 'edge':
+          if (change.type === 'create') {
+            removeEdge(change.entityId);
+          } else if (change.type === 'update' && change.before) {
+            updateEdge(change.entityId, change.before);
+          } else if (change.type === 'delete' && change.before) {
+            addEdge(change.before);
+          }
+          break;
+          
+        case 'view':
+          if (change.type === 'update' && change.before) {
+            updateView(change.entityId, change.before);
+          }
+          break;
+          
+        case 'block':
+          if (change.type === 'create' && currentKnowledgeBase) {
+            delete currentKnowledgeBase.blocks[change.entityId];
+          } else if (change.type === 'delete' && change.before && currentKnowledgeBase) {
+            currentKnowledgeBase.blocks[change.entityId] = change.before;
+          }
+          break;
+      }
+    }
+  }
+
+  // 添加到撤销栈
+  private addToUndoStack(undoableCommand: UndoableCommand): void {
+    this.undoStack.push(undoableCommand);
+    if (this.undoStack.length > this.maxUndoStackSize) {
+      this.undoStack.shift();
+    }
+  }
+
   // 添加命令到历史记录
   private addToHistory(command: Command): void {
     this.history.push(command);
@@ -124,9 +350,25 @@ class CommandExecutor {
     }
   }
 
+  // 获取撤销栈状态
+  getUndoRedoState(): { canUndo: boolean; canRedo: boolean; undoCount: number; redoCount: number } {
+    return {
+      canUndo: this.undoStack.length > 0,
+      canRedo: this.redoStack.length > 0,
+      undoCount: this.undoStack.length,
+      redoCount: this.redoStack.length
+    };
+  }
+
   // 获取命令历史
   getHistory(): Command[] {
     return [...this.history];
+  }
+
+  // 清空撤销重做栈
+  clearUndoRedo(): void {
+    this.undoStack = [];
+    this.redoStack = [];
   }
 
   // 生成命令ID
@@ -235,6 +477,26 @@ class CommandSystem {
   // 获取已注册的命令列表
   getRegisteredCommands(): string[] {
     return this.registry.getRegisteredCommands();
+  }
+
+  // 撤销操作
+  async undo(): Promise<CommandResult> {
+    return this.executor.undo();
+  }
+
+  // 重做操作  
+  async redo(): Promise<CommandResult> {
+    return this.executor.redo();
+  }
+
+  // 获取撤销重做状态
+  getUndoRedoState(): { canUndo: boolean; canRedo: boolean; undoCount: number; redoCount: number } {
+    return this.executor.getUndoRedoState();
+  }
+
+  // 清空撤销重做栈
+  clearUndoRedo(): void {
+    this.executor.clearUndoRedo();
   }
 
   // 获取命令历史

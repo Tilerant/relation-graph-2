@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useGraphStore } from '../../store/graph-store';
+import { deleteNodeCommand, copyNodeCommand } from '../../core/node-commands';
 import { NodeDisplayMode } from '../../types/structure';
 import type { EntityId } from '../../types/structure';
 
@@ -34,17 +35,54 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   };
 
   // 删除节点
-  const handleDeleteNode = () => {
+  const handleDeleteNode = async () => {
     if (confirm('确定要删除这个节点吗？')) {
-      removeNode(nodeId);
-      onClose();
+      try {
+        const result = await deleteNodeCommand(nodeId);
+        
+        if (result.success) {
+          console.log('✅ 节点删除成功:', result.data?.nodeId);
+          onClose();
+        } else {
+          console.error('❌ 节点删除失败:', result.error);
+          alert('删除失败: ' + result.error);
+        }
+      } catch (error) {
+        console.error('❌ 节点删除失败:', error);
+        alert('删除失败: ' + error);
+      }
     }
   };
 
   // 复制节点
-  const handleCopyNode = () => {
-    // TODO: 实现节点复制功能
-    console.log('复制节点:', nodeId);
+  const handleCopyNode = async () => {
+    if (!node) return;
+    
+    const { getCurrentView } = useGraphStore.getState();
+    const currentView = getCurrentView();
+    if (!currentView) return;
+
+    try {
+      // 获取原节点位置，新节点偏移一些位置
+      const originalPosition = currentView.layout.nodePositions[nodeId] || { x: 0, y: 0 };
+      const newPosition = {
+        x: originalPosition.x + 50,
+        y: originalPosition.y + 50
+      };
+      
+      const result = await copyNodeCommand(nodeId, newPosition);
+      
+      if (result.success) {
+        console.log('✅ 节点复制成功:', result.data?.nodeId);
+        onClose();
+      } else {
+        console.error('❌ 节点复制失败:', result.error);
+        alert('复制失败: ' + result.error);
+      }
+    } catch (error) {
+      console.error('❌ 节点复制失败:', error);
+      alert('复制失败: ' + error);
+    }
   };
 
   return (
