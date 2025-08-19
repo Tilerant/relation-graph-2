@@ -18,6 +18,7 @@ import '@xyflow/react/dist/style.css';
 
 import { useGraphStore } from '../../store/graph-store';
 import { UnifiedNode } from './nodes/UnifiedNode';
+import CustomNode from './nodes/CustomNode';
 import { GraphEdge } from './edges/GraphEdge';
 import { FloatingToolbar } from './FloatingToolbar';
 import { EdgeFloatingToolbar } from './EdgeFloatingToolbar';
@@ -29,6 +30,7 @@ import type { Node, Edge, RelationNode, Block, EntityId } from '../../types/stru
 // 自定义节点类型
 const nodeTypes = {
   graphNode: UnifiedNode,
+  customNode: CustomNode,
 };
 
 // 自定义边类型

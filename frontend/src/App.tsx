@@ -1,4 +1,6 @@
 import React, { useEffect } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { MainLayout } from './components/layout/MainLayout';
 import { useGraphStore } from './store/graph-store';
 import { registerNodeCommands } from './core/node-commands';
@@ -241,9 +243,11 @@ function App() {
   }, [loadKnowledgeBase, currentKnowledgeBase]);
 
   return (
-    <div className="App">
-      <MainLayout />
-    </div>
+    <DndProvider backend={HTML5Backend}>
+      <div className="App">
+        <MainLayout />
+      </div>
+    </DndProvider>
   );
 }
 

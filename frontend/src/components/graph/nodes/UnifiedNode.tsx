@@ -4,8 +4,10 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useGraphStore } from '../../../store/graph-store';
+import { updateNodeCommand } from '../../../core/node-commands';
 import { NodeDisplayMode } from '../../../types/structure';
 import type { Node, RelationNode } from '../../../types/structure';
+import CustomNode from './CustomNode';
 
 // 统一节点数据类型
 interface UnifiedNodeData {
@@ -81,6 +83,55 @@ const BoxNode: React.FC<{
   entityProps: ReturnType<typeof getEntityProps>; 
   isSelected: boolean;
 }> = ({ entityProps, isSelected }) => {
+  // 简单编辑状态管理（仅支持标题编辑）
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false);
+  const [localTitle, setLocalTitle] = React.useState(entityProps.title);
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
+  
+  React.useEffect(() => {
+    setLocalTitle(entityProps.title);
+  }, [entityProps.title]);
+  
+  React.useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
+    }
+  }, [isEditingTitle]);
+  
+  const handleTitleEdit = () => {
+    if (entityProps.isMissing) return;
+    setIsEditingTitle(true);
+  };
+  
+  const handleTitleSave = async () => {
+    setIsEditingTitle(false);
+    if (localTitle !== entityProps.title && !entityProps.isRelation && !entityProps.isMissing) {
+      try {
+        const result = await updateNodeCommand(entityProps.id, { title: localTitle });
+        if (result.success) {
+          console.log('✅ BoxNode标题保存成功:', localTitle);
+        } else {
+          console.error('❌ BoxNode标题保存失败:', result.error);
+          setLocalTitle(entityProps.title);
+        }
+      } catch (error) {
+        console.error('❌ BoxNode标题保存出错:', error);
+        setLocalTitle(entityProps.title);
+      }
+    }
+  };
+  
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleTitleSave();
+    } else if (e.key === 'Escape') {
+      setLocalTitle(entityProps.title);
+      setIsEditingTitle(false);
+    }
+  };
+
   // 获取显示内容
   const displayContent = entityProps.blocks.find(block => block.type === 'text')?.content || entityProps.title;
 
@@ -102,20 +153,56 @@ const BoxNode: React.FC<{
         }`}
       >
         {/* 标题 */}
-        <h3 className={`text-sm font-medium mb-2 truncate ${
-          entityProps.isMissing 
-            ? 'text-red-900' 
-            : entityProps.isRelation ? 'text-purple-900' : 'text-gray-900'
-        }`}>
-          <span className={`mr-2 ${
-            entityProps.isMissing 
-              ? 'text-red-600' 
-              : entityProps.isRelation ? 'text-purple-600' : 'text-blue-600'
-          }`}>
-            {entityProps.isMissing ? '❓' : entityProps.isRelation ? '🔗' : '🔸'}
-          </span>
-          {entityProps.title}
-        </h3>
+        {isEditingTitle ? (
+          <div className="flex items-center mb-2">
+            <span className={`mr-2 ${
+              entityProps.isMissing 
+                ? 'text-red-600' 
+                : entityProps.isRelation ? 'text-purple-600' : 'text-blue-600'
+            }`}>
+              {entityProps.isMissing ? '❓' : entityProps.isRelation ? '🔗' : '🔸'}
+            </span>
+            <input
+              ref={titleInputRef}
+              value={localTitle}
+              onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={handleTitleSave}
+              onKeyDown={handleTitleKeyDown}
+              className={`flex-1 text-sm font-medium bg-transparent border-0 outline-0 focus:ring-1 focus:ring-blue-300 rounded px-1 ${
+                entityProps.isMissing 
+                  ? 'text-red-900' 
+                  : entityProps.isRelation ? 'text-purple-900' : 'text-gray-900'
+              }`}
+              style={{ minWidth: '80px' }}
+            />
+          </div>
+        ) : (
+          <h3 
+            className={`text-sm font-medium mb-2 truncate px-1 py-0.5 rounded transition-colors ${
+              entityProps.isMissing 
+                ? 'text-red-900' 
+                : entityProps.isRelation ? 'text-purple-900' : 'text-gray-900'
+            } ${
+              !entityProps.isMissing && !entityProps.isRelation 
+                ? 'cursor-text hover:bg-gray-50 hover:ring-1 hover:ring-blue-200' 
+                : 'cursor-default'
+            }`}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              handleTitleEdit();
+            }}
+            title={!entityProps.isMissing && !entityProps.isRelation ? "双击编辑标题" : undefined}
+          >
+            <span className={`mr-2 ${
+              entityProps.isMissing 
+                ? 'text-red-600' 
+                : entityProps.isRelation ? 'text-purple-600' : 'text-blue-600'
+            }`}>
+              {entityProps.isMissing ? '❓' : entityProps.isRelation ? '🔗' : '🔸'}
+            </span>
+            {localTitle}
+          </h3>
+        )}
         
         {/* 内容预览 */}
         {displayContent && (
@@ -142,7 +229,7 @@ const BoxNode: React.FC<{
   );
 };
 
-// 卡片模式组件
+// 卡片模式组件 - 使用CustomNode实现
 const CardNode: React.FC<{ 
   entityProps: ReturnType<typeof getEntityProps>; 
   isSelected: boolean; 
@@ -152,121 +239,90 @@ const CardNode: React.FC<{
   isSelected, 
   onOpenDetail
 }) => {
-  const renderBlockPreview = (block: any) => {
-    if (typeof block.content === 'string') {
-      return block.content;
-    }
-    return '内容块';
-  };
-
-  return (
-    <div className="relative">
-      <div 
-        className={`bg-white border-2 rounded-lg shadow-sm cursor-pointer transition-all min-w-[200px] max-w-[300px] ${
-          entityProps.isMissing
-            ? isSelected
-              ? 'border-red-400 shadow-lg bg-red-50'
-              : 'border-red-200 hover:border-red-300 hover:shadow-md bg-red-25'
-            : isSelected 
-              ? entityProps.isRelation
+  // 如果是缺失节点或关系节点，使用简化显示
+  if (entityProps.isMissing || entityProps.isRelation) {
+    return (
+      <div className="relative">
+        <div 
+          className={`bg-white border-2 rounded-lg p-3 cursor-pointer transition-all min-w-[200px] max-w-[300px] ${
+            entityProps.isMissing
+              ? isSelected
+                ? 'border-red-400 shadow-lg bg-red-50'
+                : 'border-red-200 hover:border-red-300 hover:shadow-md bg-red-25'
+              : isSelected 
                 ? 'border-purple-400 shadow-lg' 
-                : 'border-blue-400 shadow-lg'
-              : entityProps.isRelation
-                ? 'border-purple-200 hover:border-purple-300 hover:shadow-md'
-                : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-        }`}
-      >
-        {/* 标题栏 */}
-        <div className={`px-3 py-2 border-b ${
-          entityProps.isMissing 
-            ? 'border-red-100' 
-            : entityProps.isRelation ? 'border-purple-100' : 'border-gray-100'
-        }`}>
-          <h3 className={`text-sm font-medium truncate ${
+                : 'border-purple-200 hover:border-purple-300 hover:shadow-md'
+          }`}
+        >
+          <h3 className={`text-sm font-medium mb-2 ${
             entityProps.isMissing 
               ? 'text-red-900' 
-              : entityProps.isRelation ? 'text-purple-900' : 'text-gray-900'
+              : 'text-purple-900'
           }`}>
             <span className={`mr-2 ${
               entityProps.isMissing 
                 ? 'text-red-600' 
-                : entityProps.isRelation ? 'text-purple-600' : 'text-blue-600'
+                : 'text-purple-600'
             }`}>
-              {entityProps.isMissing ? '❓' : entityProps.isRelation ? '🔗' : '🔸'}
+              {entityProps.isMissing ? '❓' : '🔗'}
             </span>
             {entityProps.title}
-            {entityProps.isMissing && entityProps.originalId && (
-              <span className="text-xs text-red-500 ml-1">({entityProps.originalId})</span>
-            )}
           </h3>
-        </div>
-        
-        {/* 内容区域 */}
-        <div className="p-3 space-y-2 overflow-hidden" style={{ maxHeight: '200px' }}>
-          {entityProps.blocks.slice(0, 3).map((block, index) => (
-            <div key={block.id || index} className="text-xs text-gray-600 break-words">
-              <div className="line-clamp-3">{renderBlockPreview(block)}</div>
-            </div>
-          ))}
           
-          {/* 更多内容指示器 */}
-          {entityProps.blocks.length > 3 && (
-            <div className="text-xs text-gray-400 italic">
-              还有 {entityProps.blocks.length - 3} 个内容块...
-            </div>
-          )}
-        </div>
-        
-        {/* 属性标签 */}
-        <div className="px-3 pb-2">
-          <div className="flex flex-wrap gap-1">
-            {/* 实体类型标签 */}
-            <span className={`inline-block px-2 py-1 text-xs rounded ${
-              entityProps.isMissing
-                ? 'bg-red-100 text-red-800'
-                : entityProps.isRelation 
-                  ? 'bg-purple-100 text-purple-800'
-                  : 'bg-blue-100 text-blue-800'
-            }`}>
-              {entityProps.isMissing 
-                ? '丢失节点' 
-                : entityProps.isRelation ? entityProps.relationType : entityProps.entityLabel}
-            </span>
-            
-            {/* 其他标签 */}
-            {entityProps.tags.slice(0, 2).map(tag => (
-              <span key={tag} className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                {tag}
-              </span>
-            ))}
+          <div className="text-xs text-gray-600 mb-2">
+            {entityProps.isRelation 
+              ? `${entityProps.participants?.length || 0} 个参与者 • ${entityProps.relationType}`
+              : `原节点 ${entityProps.originalId} 已被删除`
+            }
           </div>
           
-          {/* 关系节点的参与者信息 */}
-          {entityProps.isRelation && (
-            <div className="text-xs text-gray-500 mt-1">
-              {entityProps.participants?.length || 0} 个参与者
-            </div>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail();
+            }}
+            className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+          >
+            <span className="text-xs">👁️</span>
+          </button>
         </div>
         
-        {/* 详情按钮 */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenDetail();
-          }}
-          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-        >
-          <span className="text-xs">👁️</span>
-        </button>
+        <Handle type="target" position={Position.Top} />
+        <Handle type="source" position={Position.Bottom} />
+        <Handle type="target" position={Position.Left} />
+        <Handle type="source" position={Position.Right} />
       </div>
-      
-      {/* 连接点 */}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
-    </div>
+    );
+  }
+
+  // 正常节点使用CustomNode - 构造完整的节点数据
+  const nodeData = {
+    node: {
+      meta: {
+        id: entityProps.id,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        version: 1,
+        tags: entityProps.tags || [],
+        entityLabel: entityProps.entityLabel || '概念'
+      },
+      title: entityProps.title,
+      blocks: entityProps.blocks || [],
+      properties: {}
+    } as Node,
+    viewConfig: {}
+  };
+
+  return (
+    <CustomNode 
+      data={nodeData}
+      selected={isSelected}
+      id={entityProps.id}
+      type="customNode"
+      position={{ x: 0, y: 0 }}
+      dragging={false}
+      zIndex={1}
+    />
   );
 };
 
