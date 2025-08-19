@@ -5,7 +5,7 @@ import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { useGraphStore } from '../../../store/graph-store';
 import { NodeDisplayMode } from '../../../types/structure';
-import type { Node } from '../../../types/structure';
+import type { Node, RelationNode } from '../../../types/structure';
 
 // 节点数据类型
 interface NodeData {
@@ -13,25 +13,58 @@ interface NodeData {
   viewConfig: any;
 }
 
-// 圆点模式组件
-const DotNode: React.FC<{ node: Node; isSelected: boolean }> = ({ node, isSelected }) => {
+// 关系节点数据类型
+interface RelationNodeData {
+  relation: RelationNode;
+  viewConfig: any;
+}
+
+// 通用节点数据类型
+type UniversalNodeData = NodeData | RelationNodeData;
+
+// 通用实体接口（节点或关系节点）
+interface UniversalEntity {
+  meta: {
+    id: string;
+    tags: string[];
+    entityLabel?: string;
+    relationType?: string;
+  };
+  title: string;
+  blocks?: any[];
+  participants?: string[];
+}
+
+// 判断是否为关系节点
+const isRelationNode = (entity: any): entity is RelationNode => {
+  return 'participants' in entity && 'meta' in entity && 'relationType' in entity.meta;
+};
+
+// 圆点模式组件 - 支持节点和关系节点
+const DotNode: React.FC<{ entity: UniversalEntity; isSelected: boolean }> = ({ entity, isSelected }) => {
+  const isRelation = isRelationNode(entity);
+  
   return (
     <div className="relative">
       {/* 圆点 */}
       <div 
         className={`w-3 h-3 rounded-full border-2 cursor-pointer transition-all ${
           isSelected 
-            ? 'bg-blue-500 border-blue-600 shadow-lg' 
-            : 'bg-white border-gray-400 hover:border-gray-600'
+            ? isRelation 
+              ? 'bg-purple-500 border-purple-600 shadow-lg' 
+              : 'bg-blue-500 border-blue-600 shadow-lg'
+            : isRelation
+              ? 'bg-purple-300 border-purple-400 hover:border-purple-600'
+              : 'bg-white border-gray-400 hover:border-gray-600'
         }`}
       />
       
       {/* 标题 */}
-      {node.title && (
+      {entity.title && (
         <div 
           className="absolute top-5 left-1/2 transform -translate-x-1/2 text-sm font-medium text-gray-700 whitespace-nowrap pointer-events-none"
         >
-          {node.title}
+          {entity.title}
         </div>
       )}
       

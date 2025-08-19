@@ -141,7 +141,7 @@ export const updateEdgeHandler = async (payload: UpdateEdgePayload): Promise<Com
 
 // 删除边命令处理器
 export const deleteEdgeHandler = async (payload: DeleteEdgePayload): Promise<CommandResult> => {
-  const { getEdge, removeEdge, getCurrentView, updateView } = useGraphStore.getState();
+  const { getEdge, removeEdge, getCurrentView, updateView, getRelation, updateRelation } = useGraphStore.getState();
   
   try {
     const existingEdge = getEdge(payload.edgeId);
@@ -160,50 +160,106 @@ export const deleteEdgeHandler = async (payload: DeleteEdgePayload): Promise<Com
       };
     }
 
-    // 记录变更
-    const changes: EntityChange[] = [
-      {
-        type: 'delete',
-        entityType: 'edge',
-        entityId: payload.edgeId,
-        before: existingEdge,
-        after: null
-      }
-    ];
-
-    // 如果边在当前视图中，也要记录视图变更
-    if (currentView.edgeIds.includes(payload.edgeId)) {
-      const oldView = { ...currentView };
-      const updatedView = {
-        ...currentView,
-        edgeIds: currentView.edgeIds.filter(id => id !== payload.edgeId)
-      };
-      
-      changes.push({
-        type: 'update',
-        entityType: 'view',
-        entityId: currentView.id,
-        before: oldView,
-        after: updatedView
-      });
-    }
-
-    // 执行删除
-    removeEdge(payload.edgeId);
+    // 检查是否为关系连线
+    const isRelationEdge = existingEdge.attributes?.isRelationParticipant === true;
+    const relationId = existingEdge.attributes?.relationId;
     
-    // 从视图中移除
-    if (currentView.edgeIds.includes(payload.edgeId)) {
-      const updatedView = {
-        ...currentView,
-        edgeIds: currentView.edgeIds.filter(id => id !== payload.edgeId)
+    if (isRelationEdge && relationId) {
+      // 处理关系连线删除 - 从关系节点的参与者列表中移除
+      const relation = getRelation(relationId);
+      if (relation) {
+        // 获取原始目标ID，可能是占位符节点
+        const originalTargetId = existingEdge.attributes?.originalTargetId || existingEdge.targetNodeId;
+        const actualTargetId = originalTargetId.startsWith('missing-') ? 
+                              originalTargetId.substring('missing-'.length) : 
+                              originalTargetId;
+        
+        const updatedParticipants = relation.participants?.filter(p => p !== actualTargetId) || [];
+        
+        const updatedRelation = {
+          ...relation,
+          participants: updatedParticipants,
+          meta: {
+            ...relation.meta,
+            updatedAt: Date.now(),
+            version: relation.meta.version + 1
+          }
+        };
+
+        // 记录关系节点变更
+        const changes: EntityChange[] = [
+          {
+            type: 'update',
+            entityType: 'relation',
+            entityId: relationId,
+            before: relation,
+            after: updatedRelation
+          }
+        ];
+
+        // 更新关系节点
+        updateRelation(relationId, {
+          participants: updatedParticipants,
+          meta: updatedRelation.meta
+        });
+
+        return {
+          success: true,
+          data: { edgeId: payload.edgeId, relationId: relationId },
+          changes
+        };
+      }
+    } else {
+      // 处理普通边删除
+      const changes: EntityChange[] = [
+        {
+          type: 'delete',
+          entityType: 'edge',
+          entityId: payload.edgeId,
+          before: existingEdge,
+          after: null
+        }
+      ];
+
+      // 如果边在当前视图中，也要记录视图变更
+      if (currentView.edgeIds.includes(payload.edgeId)) {
+        const oldView = { ...currentView };
+        const updatedView = {
+          ...currentView,
+          edgeIds: currentView.edgeIds.filter(id => id !== payload.edgeId)
+        };
+        
+        changes.push({
+          type: 'update',
+          entityType: 'view',
+          entityId: currentView.id,
+          before: oldView,
+          after: updatedView
+        });
+      }
+
+      // 执行删除
+      removeEdge(payload.edgeId);
+      
+      // 从视图中移除
+      if (currentView.edgeIds.includes(payload.edgeId)) {
+        const updatedView = {
+          ...currentView,
+          edgeIds: currentView.edgeIds.filter(id => id !== payload.edgeId)
+        };
+        updateView(currentView.id, updatedView);
+      }
+
+      return {
+        success: true,
+        data: { edgeId: payload.edgeId },
+        changes
       };
-      updateView(currentView.id, updatedView);
     }
 
     return {
-      success: true,
-      data: { edgeId: payload.edgeId },
-      changes
+      success: false,
+      error: 'Failed to delete edge'
     };
   } catch (error) {
     return {

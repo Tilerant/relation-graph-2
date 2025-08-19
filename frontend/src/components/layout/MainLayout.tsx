@@ -1,8 +1,15 @@
 // 主界面布局 - VSCode风格
 
 import React, { useState } from 'react';
-import { WhiteboardView } from '../graph/WhiteboardView';
+import { ViewRenderer } from '../views/ViewRenderer';
+import { ViewManager } from '../views/ViewManager';
+import { NodeList } from '../views/NodeList';
+import { ViewTabs } from '../views/ViewTabs';
 import { WebPageView } from '../editor/WebPageView';
+import { LinearRenderer } from '../views/LinearRenderer';
+import { MediaRenderer } from '../views/MediaRenderer';
+import { RelationView } from '../views/RelationView';
+import { EdgeView } from '../views/EdgeView';
 import { useGraphStore } from '../../store/graph-store';
 import { NodeDisplayMode } from '../../types/structure';
 
@@ -16,11 +23,10 @@ interface SidebarItem {
 
 // 默认侧边栏项目
 const defaultSidebarItems: SidebarItem[] = [
-  { id: 'explorer', icon: '📁', title: '知识库管理' },
+  { id: 'nodes', icon: '🔸', title: '节点列表' },
+  { id: 'views', icon: '📋', title: '视图列表' },
   { id: 'search', icon: '🔍', title: '搜索' },
-  { id: 'graph', icon: '🔗', title: '图谱视图' },
-  { id: 'ai', icon: '🤖', title: 'AI 助手' },
-  { id: 'plugins', icon: '🧩', title: '插件' },
+  { id: 'graph', icon: '🔗', title: '图谱工具' },
 ];
 
 interface MainLayoutProps {
@@ -31,11 +37,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const {
     currentKnowledgeBase,
     rightPanelOpen,
+    rightPanelContent,
     closeRightPanel,
     setNodeViewConfig,
+    setRelationViewConfig,
+    getCurrentView,
+    getView,
   } = useGraphStore();
 
-  const [activeSidebarItem, setActiveSidebarItem] = useState<string>('explorer');
+  const [activeSidebarItem, setActiveSidebarItem] = useState<string>('nodes');
   const [leftPanelWidth, setLeftPanelWidth] = useState(250);
   const [rightPanelWidth, setRightPanelWidth] = useState(400);
 
@@ -49,6 +59,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     
     Object.keys(currentKnowledgeBase.nodes).forEach(nodeId => {
       setNodeViewConfig(nodeId, { displayMode });
+    });
+  };
+
+  // 切换所有关系节点的显示模式
+  const switchAllRelationsMode = (mode: 'dot' | 'card' | 'container' | 'expanded') => {
+    if (!currentKnowledgeBase) return;
+    
+    Object.keys(currentKnowledgeBase.relations || {}).forEach(relationId => {
+      setRelationViewConfig(relationId, { displayMode: mode });
     });
   };
 
@@ -86,43 +105,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // 渲染左侧面板内容
   const renderLeftPanelContent = () => {
     switch (activeSidebarItem) {
-      case 'explorer':
-        return (
-          <div className="flex-1 p-3">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">知识库管理</h3>
-            {currentKnowledgeBase ? (
-              <div className="space-y-2">
-                <div className="p-2 bg-white rounded border">
-                  <div className="font-medium text-sm">{currentKnowledgeBase.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {Object.keys(currentKnowledgeBase.nodes).length} 节点 • 
-                    {Object.keys(currentKnowledgeBase.edges).length} 边
-                  </div>
-                </div>
-                
-                {/* 视图列表 */}
-                <div className="mt-4">
-                  <h4 className="text-xs font-semibold text-gray-600 mb-2">视图</h4>
-                  {Object.values(currentKnowledgeBase.views).map(view => (
-                    <div key={view.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                      <span className="text-sm">{view.name}</span>
-                      <span className="ml-auto text-xs text-gray-400">
-                        {view.nodeIds.length}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <p className="mb-3">暂无知识库</p>
-                <button className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">
-                  创建知识库
-                </button>
-              </div>
-            )}
-          </div>
-        );
+      case 'nodes':
+        return <NodeList />;
+
+      case 'views':
+        return <ViewManager />;
 
       case 'search':
         return (
@@ -164,9 +151,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
                 📊 布局算法
               </button>
-              <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
-                🔍 图分析
-              </button>
               
               {/* 节点显示模式切换 */}
               <div className="mt-4 pt-4 border-t border-gray-200">
@@ -192,34 +176,37 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        );
 
-      case 'ai':
-        return (
-          <div className="flex-1 p-3">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">AI 助手</h3>
-            <div className="space-y-2">
-              <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
-                💡 生成结构建议
-              </button>
-              <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
-                🔗 推荐连接
-              </button>
-              <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
-                📝 内容补全
-              </button>
-            </div>
-          </div>
-        );
-
-      case 'plugins':
-        return (
-          <div className="flex-1 p-3">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">插件</h3>
-            <div className="text-sm text-gray-500">
-              插件系统将在后续版本中实现
+              {/* 关系节点显示模式切换 */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs font-semibold text-gray-600 mb-2">关系显示模式</h4>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => switchAllRelationsMode('dot')}
+                    className="w-full px-3 py-1 text-xs bg-purple-50 text-purple-700 rounded hover:bg-purple-100 transition-colors"
+                  >
+                    ⚫ 圆点模式
+                  </button>
+                  <button
+                    onClick={() => switchAllRelationsMode('card')}
+                    className="w-full px-3 py-1 text-xs bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    🔗 卡片模式
+                  </button>
+                  <button
+                    onClick={() => switchAllRelationsMode('container')}
+                    className="w-full px-3 py-1 text-xs bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    📦 容器模式
+                  </button>
+                  <button
+                    onClick={() => switchAllRelationsMode('expanded')}
+                    className="w-full px-3 py-1 text-xs bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    📄 展开模式
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -243,24 +230,30 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {renderSidebar()}
         </div>
 
-        {/* 中央白板视图 */}
+        {/* 中央视图区域 */}
         <div className="flex-1 flex flex-col">
           {/* 视图标签栏 */}
-          <div className="h-10 bg-gray-50 border-b border-gray-200 flex items-center px-4">
-            <div className="flex items-center space-x-4">
-              <button className="px-3 py-1 bg-white border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors">
-                🗺️ 白板视图
-              </button>
-              <span className="text-gray-400">|</span>
-              <span className="text-sm text-gray-600">
-                {currentKnowledgeBase?.name || '未选择知识库'}
-              </span>
-            </div>
-          </div>
+          <ViewTabs />
 
-          {/* 白板视图内容 */}
+          {/* 视图内容 */}
           <div className="flex-1">
-            <WhiteboardView />
+            {(() => {
+              const currentView = getCurrentView();
+              if (!currentView) {
+                return (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <p className="text-lg mb-2">📋</p>
+                      <p>请选择一个视图</p>
+                      <p className="text-sm mt-2 text-gray-400">
+                        在左侧面板中点击视图或创建新视图
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return <ViewRenderer view={currentView} />;
+            })()}
           </div>
         </div>
 
@@ -272,7 +265,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           >
             {/* 面板标题栏 */}
             <div className="h-10 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-4">
-              <span className="text-sm font-medium text-gray-800">详情编辑</span>
+              <span className="text-sm font-medium text-gray-800">
+                {rightPanelContent.type === 'view' ? '视图内容' : 
+                 rightPanelContent.type === 'node' ? '节点详情' : 
+                 rightPanelContent.type === 'relation' ? '关系节点详情' :
+                 rightPanelContent.type === 'edge' ? '边详情' :
+                 '详情编辑'}
+              </span>
               <button
                 onClick={closeRightPanel}
                 className="w-6 h-6 rounded hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
@@ -281,9 +280,35 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </button>
             </div>
 
-            {/* 网页视图内容 */}
+            {/* 内容区域 */}
             <div className="flex-1">
-              <WebPageView />
+              {(() => {
+                if (rightPanelContent.type === 'view' && rightPanelContent.entityId) {
+                  const view = getView(rightPanelContent.entityId);
+                  if (view) {
+                    if (view.viewType === 'linear') {
+                      return <LinearRenderer view={view} />;
+                    } else if (view.viewType === 'media') {
+                      return <MediaRenderer view={view} />;
+                    }
+                  }
+                  return (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                      <div className="text-center">
+                        <p>视图不存在或类型不支持</p>
+                      </div>
+                    </div>
+                  );
+                } else if (rightPanelContent.type === 'relation' && rightPanelContent.entityId) {
+                  return <RelationView relationId={rightPanelContent.entityId} />;
+                } else if (rightPanelContent.type === 'edge' && rightPanelContent.entityId) {
+                  return <EdgeView edgeId={rightPanelContent.entityId} />;
+                } else if (rightPanelContent.type === 'node') {
+                  return <WebPageView />;
+                } else {
+                  return <WebPageView />;
+                }
+              })()}
             </div>
           </div>
         )}
@@ -293,15 +318,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <div className="h-6 bg-blue-600 flex items-center justify-between px-4 text-white text-xs">
         <div className="flex items-center space-x-4">
           <span>就绪</span>
-          {currentKnowledgeBase && (
-            <span>
-              {Object.keys(currentKnowledgeBase.nodes).length} 节点 • 
-              {Object.keys(currentKnowledgeBase.edges).length} 边
-            </span>
-          )}
         </div>
         <div className="flex items-center space-x-4">
-          <span>版本 2.0.0</span>
+          <span>图谱笔记系统</span>
         </div>
       </div>
     </div>

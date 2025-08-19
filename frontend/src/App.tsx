@@ -6,7 +6,8 @@ import { registerEdgeCommands } from './core/edge-commands';
 import { registerBlockCommands } from './core/block-commands';
 import { registerViewCommands } from './core/view-commands';
 import { keyboardHandler } from './core/keyboard-handler';
-import type { KnowledgeBase, Node, Edge, Block, View } from './types/structure';
+import type { KnowledgeBase, Node, Edge, RelationNode, Block, View } from './types/structure';
+import { createView } from './types/structure';
 import './App.css';
 
 // 创建示例数据
@@ -23,8 +24,12 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
       tags: ['概念'],
       entityLabel: '核心概念'
     },
-    properties: {},
     title: '图谱系统',
+    content: '这是一个以结构为核心的图谱笔记系统，支持节点、边、块的结构化表达。',
+    attributes: {
+      category: '核心系统',
+      priority: 'high'
+    },
     blocks: [
       {
         id: 'block_1',
@@ -45,13 +50,17 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
       tags: ['组件'],
       entityLabel: '技术组件'
     },
-    properties: {},
     title: 'React Flow',
+    content: '用于构建白板视图的React组件库，支持节点拖拽和连接。',
+    attributes: {
+      type: 'library',
+      language: 'React'
+    },
     blocks: [
       {
         id: 'block_2',
         type: 'text',
-        content: '用于构建白板视图的React组件库，支持节点拖拽和连接。',
+        content: '支持节点拖拽、连接线、缩放等交互功能。',
         properties: {},
         order: 0
       }
@@ -80,7 +89,7 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
     ]
   };
 
-  // 创建示例边
+  // 创建示例边（轻量边）
   const edge1: Edge = {
     meta: {
       id: 'edge_1',
@@ -88,13 +97,14 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
       updatedAt: now,
       version: 1,
       tags: [],
-      semanticLabel: '依赖于',
-      isHyperEdge: false
+      semanticLabel: '依赖于'
     },
-    properties: {},
     sourceNodeId: 'node_1',
     targetNodeId: 'node_2',
-    blocks: []
+    attributes: {
+      strength: 'strong',
+      note: '系统依赖于React Flow进行图形展示'
+    }
   };
 
   const edge2: Edge = {
@@ -104,37 +114,70 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
       updatedAt: now,
       version: 1,
       tags: [],
-      semanticLabel: '依赖于',
-      isHyperEdge: false
+      semanticLabel: '依赖于'
     },
-    properties: {},
     sourceNodeId: 'node_1',
     targetNodeId: 'node_3',
-    blocks: []
+    attributes: {
+      strength: 'medium'
+    }
   };
 
-  // 创建主视图
-  const mainView: View = {
-    id: 'view_main',
-    name: '主视图',
-    type: 'whiteboard',
-    nodeIds: ['node_1', 'node_2', 'node_3'],
-    edgeIds: ['edge_1', 'edge_2'],
-    layout: {
-      nodePositions: {
-        'node_1': { x: 100, y: 100 },
-        'node_2': { x: 300, y: 50 },
-        'node_3': { x: 300, y: 150 }
-      },
-      nodeStyles: {},
-      edgeStyles: {}
+  // 创建示例关系节点（超边）
+  const relation1: RelationNode = {
+    meta: {
+      id: 'relation_1',
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      tags: ['技术栈'],
+      relationType: '集合'
     },
-    query: undefined,
-    isTemporary: false,
-    properties: {},
-    createdAt: now,
-    updatedAt: now
+    title: '前端技术栈',
+    content: '构成图谱系统前端的核心技术组件集合',
+    blocks: [
+      {
+        id: 'block_r1',
+        type: 'text',
+        content: '这个关系节点包含了前端开发的核心技术栈，它们共同构成了完整的用户界面解决方案。',
+        properties: {},
+        order: 0
+      }
+    ],
+    participants: ['node_2', 'node_3'], // 参与者：React Flow 和 Plate.js
+    attributes: {
+      category: 'frontend',
+      importance: 'high',
+      containerLayout: 'horizontal'
+    }
   };
+
+  // 创建主视图 - 使用新的视图创建函数
+  const mainView: View = createView(
+    'view_main',
+    '主视图',
+    'spatial',
+    'whiteboard',
+    {
+      nodeIds: ['node_1', 'node_2', 'node_3'],
+      edgeIds: ['edge_1', 'edge_2'],
+      relationIds: ['relation_1'],
+      layout: {
+        nodePositions: {
+          'node_1': { x: 100, y: 100 },
+          'node_2': { x: 300, y: 50 },
+          'node_3': { x: 300, y: 150 }
+        },
+        relationPositions: {
+          'relation_1': { x: 300, y: 250 }
+        },
+        nodeStyles: {},
+        edgeStyles: {},
+        relationStyles: {}
+      },
+      isTemporary: false
+    }
+  );
 
   // 创建知识库
   const knowledgeBase: KnowledgeBase = {
@@ -151,13 +194,17 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
       'edge_1': edge1,
       'edge_2': edge2
     },
+    relations: {
+      'relation_1': relation1
+    },
     views: {
       'view_main': mainView
     },
     blocks: {
       'block_1': node1.blocks[0],
       'block_2': node2.blocks[0],
-      'block_3': node3.blocks[0]
+      'block_3': node3.blocks[0],
+      'block_r1': relation1.blocks[0]
     },
     createdAt: now,
     updatedAt: now

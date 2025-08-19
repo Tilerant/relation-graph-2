@@ -27,7 +27,8 @@ const LineEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
     targetY,
     sourcePosition,
     targetPosition,
-    selected = false
+    selected = false,
+    style
   } = props;
 
   const [edgePath] = getBezierPath({
@@ -46,6 +47,7 @@ const LineEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
       style={{
         stroke: selected ? '#3b82f6' : '#6b7280',
         strokeWidth: selected ? 2 : 1,
+        ...style // 应用传递的样式（包括关系连线的紫色和虚线）
       }}
     />
   );
@@ -62,7 +64,8 @@ const BoxEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
     sourcePosition,
     targetPosition,
     data,
-    selected = false
+    selected = false,
+    style
   } = props;
 
   const { edge } = data!;
@@ -93,6 +96,7 @@ const BoxEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
         style={{
           stroke: selected ? '#3b82f6' : '#6b7280',
           strokeWidth: selected ? 2 : 1,
+          ...style
         }}
       />
       
@@ -127,7 +131,8 @@ const DotEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
     sourcePosition,
     targetPosition,
     data,
-    selected = false
+    selected = false,
+    style
   } = props;
 
   const { edge } = data!;
@@ -154,6 +159,7 @@ const DotEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
         style={{
           stroke: selected ? '#3b82f6' : '#6b7280',
           strokeWidth: selected ? 2 : 1,
+          ...style
         }}
       />
       
@@ -191,7 +197,8 @@ const CardEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
     sourcePosition,
     targetPosition,
     data,
-    selected = false
+    selected = false,
+    style
   } = props;
 
   const { edge, viewConfig } = data!;
@@ -238,6 +245,7 @@ const CardEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
         style={{
           stroke: selected ? '#3b82f6' : '#6b7280',
           strokeWidth: selected ? 2 : 1,
+          ...style
         }}
       />
       
