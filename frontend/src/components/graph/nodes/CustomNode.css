@@ -11,7 +11,8 @@
   height: 100%;
   box-sizing: border-box;
   overflow: visible !important;
-  min-height: fit-content;  
+  min-height: fit-content;
+  
 }
 
 
@@ -33,7 +34,7 @@
   font-size: 14px;
   line-height: 1.5;
   color: #000;
-  flex: 1; 
+  flex: 1;
 }
 .block-input {
   flex: 1;

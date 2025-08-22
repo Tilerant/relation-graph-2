@@ -98,6 +98,7 @@ export const DraggableBlock: React.FC<DraggableBlockProps> = ({
     <div 
       ref={ref}
       className={`block-wrapper ${className}`}
+      data-block-index={index}
       style={{ 
         opacity: isDragging ? 0.5 : 1,
         cursor: isDragging ? 'grabbing' : 'default'

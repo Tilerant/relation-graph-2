@@ -234,10 +234,12 @@ const CardNode: React.FC<{
   entityProps: ReturnType<typeof getEntityProps>; 
   isSelected: boolean; 
   onOpenDetail: () => void;
+  viewConfig?: any;
 }> = ({ 
   entityProps, 
   isSelected, 
-  onOpenDetail
+  onOpenDetail,
+  viewConfig = {}
 }) => {
   // 如果是缺失节点或关系节点，使用简化显示
   if (entityProps.isMissing || entityProps.isRelation) {
@@ -307,10 +309,11 @@ const CardNode: React.FC<{
         entityLabel: entityProps.entityLabel || '概念'
       },
       title: entityProps.title,
+      content: '', // 添加缺失的content字段
       blocks: entityProps.blocks || [],
-      properties: {}
+      attributes: {} // 修改为正确的字段名
     } as Node,
-    viewConfig: {}
+    viewConfig: viewConfig
   };
 
   return (
@@ -375,9 +378,9 @@ export const UnifiedNode: React.FC<NodeProps<UnifiedNodeData>> = ({ data, select
       case NodeDisplayMode.BOX:
         return <BoxNode entityProps={entityProps} isSelected={selected} />;
       case NodeDisplayMode.CARD:
-        return <CardNode entityProps={entityProps} isSelected={selected} onOpenDetail={handleOpenDetail} />;
+        return <CardNode entityProps={entityProps} isSelected={selected} onOpenDetail={handleOpenDetail} viewConfig={actualViewConfig} />;
       default:
-        return <CardNode entityProps={entityProps} isSelected={selected} onOpenDetail={handleOpenDetail} />;
+        return <CardNode entityProps={entityProps} isSelected={selected} onOpenDetail={handleOpenDetail} viewConfig={actualViewConfig} />;
     }
   }
 };

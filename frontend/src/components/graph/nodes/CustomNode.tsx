@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { updateNodeCommand } from '../../../core/node-commands';
+import { useGraphStore } from '../../../store/graph-store';
 import type { Node, Block } from '../../../types/structure';
 import { DraggableBlock } from './DraggableBlock';
 import './CustomNode.css';
@@ -20,7 +21,27 @@ interface ContentBlock {
 }
 
 export default function CustomNode({ data, selected }: NodeProps<CustomNodeData>) {
-  const { node } = data;
+  const { node, viewConfig: passedViewConfig } = data;
+  
+  // 获取视图配置 - 优先使用传递进来的配置
+  const { getNodeViewConfig, setNodeViewConfig } = useGraphStore();
+  const storeViewConfig = getNodeViewConfig(node.meta.id);
+  const viewConfig = passedViewConfig || storeViewConfig;
+  
+  // 节点宽度管理
+  const [nodeWidth, setNodeWidth] = useState(viewConfig.width || 280);
+  
+  // 处理宽度调整
+  const handleResize = useCallback((event: any, data: any) => {
+    const newWidth = data.width;
+    setNodeWidth(newWidth);
+    
+    // 保存到store
+    setNodeViewConfig(node.meta.id, {
+      ...viewConfig,
+      width: newWidth
+    });
+  }, [node.meta.id, viewConfig, setNodeViewConfig]);
   
   // 标题是否处于编辑模式
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -47,10 +68,16 @@ export default function CustomNode({ data, selected }: NodeProps<CustomNodeData>
 
   // 挂载后根据内容自动更新节点最小高度
   useEffect(() => {
-    if (contentRef.current) {
-      const height = contentRef.current.scrollHeight;
-      setMinHeight(height);
-    }
+    // 使用 requestAnimationFrame 确保DOM更新完成后再计算高度
+    const updateHeight = () => {
+      if (contentRef.current) {
+        const height = contentRef.current.scrollHeight;
+        // 只有当高度确实变化时才更新，避免不必要的闪烁
+        setMinHeight(prev => prev === height ? prev : Math.max(height, 100));
+      }
+    };
+    
+    requestAnimationFrame(updateHeight);
   }, [blocks, title]);
 
   // 进入编辑模式后立即调整 textarea 高度
@@ -137,8 +164,20 @@ export default function CustomNode({ data, selected }: NodeProps<CustomNodeData>
     const newBlocks = [...blocks];
     newBlocks.splice(index, 1);
     setBlocks(newBlocks);
+    
     if (newBlocks.length > 0) {
-      setEditingBlockIndex(Math.max(index - 1, 0));
+      // 计算要聚焦的块索引
+      const targetIndex = Math.max(index - 1, 0);
+      setEditingBlockIndex(targetIndex);
+      
+      // 延迟设置焦点到块末尾
+      setTimeout(() => {
+        const blockElement = document.querySelector(`[data-block-index="${targetIndex}"] textarea`);
+        if (blockElement instanceof HTMLTextAreaElement) {
+          blockElement.focus();
+          blockElement.setSelectionRange(blockElement.value.length, blockElement.value.length);
+        }
+      }, 0);
     } else {
       setEditingBlockIndex(null);
     }
@@ -193,9 +232,14 @@ export default function CustomNode({ data, selected }: NodeProps<CustomNodeData>
   }, [blocks, editingBlockIndex, node.meta.id]);
 
   return (
-    <div className={`custom-node ${selected ? 'selected' : ''}`}>
+    <div className={`custom-node ${selected ? 'selected' : ''}`} style={{ width: nodeWidth }}>
       {/* 可视节点拖动边框（不遮挡内容） */}
-      <NodeResizer isVisible={selected} minWidth={180} minHeight={minHeight} />
+      <NodeResizer 
+        isVisible={selected} 
+        minWidth={180} 
+        minHeight={minHeight}
+        onResize={handleResize}
+      />
 
       {/* 内容区域包裹，用于计算自动高度 */}
       <div ref={contentRef}>
@@ -238,10 +282,35 @@ export default function CustomNode({ data, selected }: NodeProps<CustomNodeData>
                   e.preventDefault();
                   insertBlock(i + 1);
                 }
-                // Backspace → 删除空白块
+                // Backspace → 删除空白块或合并到上一块
                 else if (e.key === 'Backspace' && blocks[i].content === '') {
                   e.preventDefault();
                   deleteBlock(i);
+                }
+                // Backspace在开头 → 合并到上一块末尾
+                else if (e.key === 'Backspace' && i > 0) {
+                  const textarea = e.target as HTMLTextAreaElement;
+                  if (textarea.selectionStart === 0 && textarea.selectionEnd === 0) {
+                    e.preventDefault();
+                    const currentContent = blocks[i].content;
+                    const prevContent = blocks[i - 1].content;
+                    const newBlocks = [...blocks];
+                    
+                    // 合并内容到上一块
+                    newBlocks[i - 1].content = prevContent + currentContent;
+                    newBlocks.splice(i, 1);
+                    setBlocks(newBlocks);
+                    setEditingBlockIndex(i - 1);
+                    
+                    // 设置光标到原上一块的末尾
+                    setTimeout(() => {
+                      const blockElement = document.querySelector(`[data-block-index="${i - 1}"] textarea`);
+                      if (blockElement instanceof HTMLTextAreaElement) {
+                        blockElement.focus();
+                        blockElement.setSelectionRange(prevContent.length, prevContent.length);
+                      }
+                    }, 0);
+                  }
                 }
               }}
             />
