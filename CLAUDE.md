@@ -18,7 +18,6 @@ This is a **React-based knowledge graph system** that visualizes and manages int
 ### Key Technologies
 - **React 19** with TypeScript
 - **Vite** for build tooling
-- **PlateJS** for rich text editing (integrated throughout the system)
 - **React Flow** (@xyflow/react) for interactive graph visualization
 - **Zustand** for state management
 - **TailwindCSS** for styling
@@ -60,11 +59,6 @@ The system implements a comprehensive **Command Pattern** with undo/redo support
 - **Layout management**: Stores positions, sizes, and styling per view
 - **Center-based positioning**: All node coordinates store center positions, with rendering calculations for different display modes
 
-### Rich Text Integration (PlateJS)
-- **PlateEditor** component (`src/components/graph/nodes/PlateEditor.tsx`): Unified rich text editing
-- Used throughout the system for node titles, content blocks, and inline editing
-- Supports bidirectional conversion between string content and Plate data format
-- Integrated with the command system for undo/redo support
 
 ### Graph Visualization (React Flow)
 - **WhiteboardView** (`src/components/graph/WhiteboardView.tsx`): Main graph interface
@@ -94,10 +88,6 @@ The system implements a comprehensive **Command Pattern** with undo/redo support
 - **Rendering**: Positions are converted to top-left for React Flow display
 - **Node sizing**: Different display modes use different dimensions (DOT: 12×12, BOX: 120×80, CARD: dynamic)
 
-### PlateJS Integration Patterns
-- All text editing uses the unified `PlateEditor` component
-- String ↔ Plate data conversion handles single-line vs multi-line content differently
-- Auto-focus and keyboard shortcuts (Enter for new blocks, Backspace for deletion)
 
 ### Data Structure Type Definitions
 Key types in `src/types/structure.ts`:

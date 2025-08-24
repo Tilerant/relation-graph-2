@@ -69,27 +69,6 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
     ]
   };
 
-  const node3: Node = {
-    meta: {
-      id: 'node_3',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: ['组件'],
-      entityLabel: '技术组件'
-    },
-    properties: {},
-    title: 'Plate.js',
-    blocks: [
-      {
-        id: 'block_3',
-        type: 'text',
-        content: '用于构建富文本编辑器的React插件化框架。',
-        properties: {},
-        order: 0
-      }
-    ]
-  };
 
   // 创建示例边（轻量边）
   const edge1: Edge = {
@@ -109,21 +88,6 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
     }
   };
 
-  const edge2: Edge = {
-    meta: {
-      id: 'edge_2',
-      createdAt: now,
-      updatedAt: now,
-      version: 1,
-      tags: [],
-      semanticLabel: '依赖于'
-    },
-    sourceNodeId: 'node_1',
-    targetNodeId: 'node_3',
-    attributes: {
-      strength: 'medium'
-    }
-  };
 
   // 创建示例关系节点（超边）
   const relation1: RelationNode = {
@@ -136,17 +100,17 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
       relationType: '集合'
     },
     title: '前端技术栈',
-    content: '构成图谱系统前端的核心技术组件集合',
+    content: '构成图谱系统前端的核心技术组件',
     blocks: [
       {
         id: 'block_r1',
         type: 'text',
-        content: '这个关系节点包含了前端开发的核心技术栈，它们共同构成了完整的用户界面解决方案。',
+        content: '这个关系节点包含了前端开发的核心技术组件，用于构建图谱的可视化界面。',
         properties: {},
         order: 0
       }
     ],
-    participants: ['node_2', 'node_3'], // 参与者：React Flow 和 Plate.js
+    participants: ['node_2'], // 参与者：React Flow
     attributes: {
       category: 'frontend',
       importance: 'high',
@@ -161,14 +125,13 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
     'spatial',
     'whiteboard',
     {
-      nodeIds: ['node_1', 'node_2', 'node_3'],
-      edgeIds: ['edge_1', 'edge_2'],
+      nodeIds: ['node_1', 'node_2'],
+      edgeIds: ['edge_1'],
       relationIds: ['relation_1'],
       layout: {
         nodePositions: {
           'node_1': { x: 100, y: 100 },
-          'node_2': { x: 300, y: 50 },
-          'node_3': { x: 300, y: 150 }
+          'node_2': { x: 300, y: 50 }
         },
         relationPositions: {
           'relation_1': { x: 300, y: 250 }
@@ -189,12 +152,10 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
     mainViewId: 'view_main',
     nodes: {
       'node_1': node1,
-      'node_2': node2,
-      'node_3': node3
+      'node_2': node2
     },
     edges: {
-      'edge_1': edge1,
-      'edge_2': edge2
+      'edge_1': edge1
     },
     relations: {
       'relation_1': relation1
@@ -205,7 +166,6 @@ const createSampleKnowledgeBase = (): KnowledgeBase => {
     blocks: {
       'block_1': node1.blocks[0],
       'block_2': node2.blocks[0],
-      'block_3': node3.blocks[0],
       'block_r1': relation1.blocks[0]
     },
     createdAt: now,
