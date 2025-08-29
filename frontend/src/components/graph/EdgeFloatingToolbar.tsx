@@ -70,57 +70,100 @@ export const EdgeFloatingToolbar: React.FC<EdgeFloatingToolbarProps> = ({
 
   return (
     <div
-      className="absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2"
       style={{
+        position: 'absolute',
+        zIndex: 50,
+        backgroundColor: 'white',
+        borderRadius: '0.5rem',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        border: '1px solid #e5e7eb',
+        padding: '0.5rem',
         left: position.x,
-        top: position.y - 60, // 显示在边上方
+        top: position.y - 60,
         minWidth: '180px'
       }}
     >
       {/* 工具栏标题 */}
-      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
-        <span className="text-xs font-medium text-gray-700">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: '500', color: '#374151' }}>
           {isRelationEdge ? '关系连线工具' : '边工具'}
-          {hasProblem && <span className="text-red-600 ml-1">⚠️</span>}
+          {hasProblem && <span style={{ color: '#dc2626', marginLeft: '0.25rem' }}>⚠️</span>}
         </span>
         <button
           onClick={onClose}
-          className="w-4 h-4 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600"
+          style={{
+            width: '1rem',
+            height: '1rem',
+            borderRadius: '0.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#9ca3af',
+            border: 'none',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s, color 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#f3f4f6';
+            e.currentTarget.style.color = '#4b5563';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = '#9ca3af';
+          }}
         >
           ✕
         </button>
       </div>
 
       {/* 边信息 */}
-      <div className="mb-3">
-        <div className="text-xs text-gray-600 mb-1">类型</div>
-        <div className={`text-xs px-2 py-1 rounded ${
-          hasProblem
-            ? isRelationEdge 
-              ? 'bg-red-100 text-red-800'
-              : 'bg-orange-100 text-orange-800'
-            : isRelationEdge 
-              ? 'bg-purple-100 text-purple-800'
-              : 'bg-blue-100 text-blue-800'
-        }`}>
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ fontSize: '0.75rem', color: '#4b5563', marginBottom: '0.25rem' }}>类型</div>
+        <div style={{
+          fontSize: '0.75rem',
+          padding: '0.25rem 0.5rem',
+          borderRadius: '0.25rem',
+          backgroundColor: hasProblem
+            ? isRelationEdge ? '#fef2f2' : '#fff7ed'
+            : isRelationEdge ? '#f3e8ff' : '#eff6ff',
+          color: hasProblem
+            ? isRelationEdge ? '#991b1b' : '#9a3412'
+            : isRelationEdge ? '#6b21a8' : '#1e40af'
+        }}>
           {hasProblem && '⚠️ '}
           {isRelationEdge ? '关系参与连线' : edge.meta.semanticLabel || '连接线'}
         </div>
         
         {/* 问题提示 */}
         {hasProblem && (
-          <div className="text-xs text-red-600 mt-1">
+          <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>
             {isRelationEdge ? '参与者节点丢失' : '连接的节点已删除'}
           </div>
         )}
       </div>
 
       {/* 工具按钮 */}
-      <div className="space-y-1">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {!isRelationEdge && (
           <button
             onClick={handleOpenDetails}
-            className="w-full px-2 py-1 text-xs text-left bg-gray-50 hover:bg-gray-100 rounded transition-colors flex items-center space-x-2"
+            style={{
+              width: '100%',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem',
+              textAlign: 'left',
+              backgroundColor: '#f9fafb',
+              borderRadius: '0.25rem',
+              transition: 'background-color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3f4f6'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
           >
             <span>👁️</span>
             <span>查看详情</span>
@@ -130,7 +173,22 @@ export const EdgeFloatingToolbar: React.FC<EdgeFloatingToolbarProps> = ({
         {isRelationEdge && relationId && (
           <button
             onClick={handleOpenRelationDetails}
-            className="w-full px-2 py-1 text-xs text-left bg-purple-50 hover:bg-purple-100 rounded transition-colors flex items-center space-x-2"
+            style={{
+              width: '100%',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.75rem',
+              textAlign: 'left',
+              backgroundColor: '#faf5ff',
+              borderRadius: '0.25rem',
+              transition: 'background-color 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f3e8ff'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#faf5ff'; }}
           >
             <span>🔗</span>
             <span>查看关系节点</span>
@@ -139,7 +197,23 @@ export const EdgeFloatingToolbar: React.FC<EdgeFloatingToolbarProps> = ({
         
         <button
           onClick={handleDeleteEdge}
-          className="w-full px-2 py-1 text-xs text-left bg-red-50 hover:bg-red-100 text-red-700 rounded transition-colors flex items-center space-x-2"
+          style={{
+            width: '100%',
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.75rem',
+            textAlign: 'left',
+            backgroundColor: '#fef2f2',
+            borderRadius: '0.25rem',
+            transition: 'background-color 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            border: 'none',
+            cursor: 'pointer',
+            color: '#b91c1c'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
         >
           <span>🗑️</span>
           <span>删除{isRelationEdge ? '关系连线' : '边'}</span>

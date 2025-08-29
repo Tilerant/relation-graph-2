@@ -73,18 +73,39 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // 渲染左侧边栏
   const renderSidebar = () => (
-    <div className="flex h-full">
+    <div style={{ display: 'flex', height: '100%' }}>
       {/* 图标栏 */}
-      <div className="w-12 bg-gray-900 flex flex-col items-center py-2 space-y-1">
+      <div style={{ width: '3rem', backgroundColor: '#111827', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0', gap: '0.25rem' }}>
         {defaultSidebarItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveSidebarItem(item.id)}
-            className={`w-10 h-10 rounded flex items-center justify-center text-lg transition-colors ${
-              activeSidebarItem === item.id
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
+            style={{
+              width: '2.5rem',
+              height: '2.5rem',
+              borderRadius: '0.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.125rem',
+              transition: 'colors 0.2s, background-color 0.2s',
+              backgroundColor: activeSidebarItem === item.id ? '#2563eb' : 'transparent',
+              color: activeSidebarItem === item.id ? 'white' : '#9ca3af',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              if (activeSidebarItem !== item.id) {
+                e.currentTarget.style.backgroundColor = '#374151';
+                e.currentTarget.style.color = 'white';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeSidebarItem !== item.id) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#9ca3af';
+              }
+            }}
             title={item.title}
           >
             {item.icon}
@@ -94,7 +115,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* 面板内容 */}
       <div 
-        className="bg-gray-100 border-r border-gray-300 flex flex-col"
+        style={{ 
+          backgroundColor: '#f3f4f6', 
+          borderRight: '1px solid #d1d5db', 
+          display: 'flex', 
+          flexDirection: 'column' 
+        }}
         style={{ width: leftPanelWidth - 48 }} // 减去图标栏宽度
       >
         {renderLeftPanelContent()}
@@ -113,25 +139,40 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       case 'search':
         return (
-          <div className="flex-1 p-3">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">搜索</h3>
+          <div style={{ flex: '1', padding: '0.75rem' }}>
+            <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937', marginBottom: '0.75rem' }}>搜索</h3>
             <input
               type="text"
               placeholder="搜索节点、边、内容..."
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{
+                width: '100%',
+                padding: '0.5rem 0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.25rem',
+                fontSize: '0.875rem',
+                outline: 'none'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#3b82f6';
+                e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d1d5db';
+                e.target.style.boxShadow = 'none';
+              }}
             />
-            <div className="mt-4 text-sm text-gray-500">
+            <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               搜索结果将在这里显示
             </div>
             
             {/* 使用提示 */}
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-              <h4 className="text-xs font-semibold text-blue-800 mb-2">快速操作</h4>
-              <div className="text-xs text-blue-700 space-y-1">
-                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">双击</kbd> 白板创建节点</div>
-                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">右键</kbd> 节点显示工具栏</div>
-                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">双击</kbd> 节点打开编辑</div>
-                <div>• <kbd className="px-1 py-0.5 bg-white rounded text-xs">拖拽</kbd> 连接点创建连线</div>
+            <div style={{ marginTop: '1.5rem', padding: '0.75rem', backgroundColor: '#eff6ff', borderRadius: '0.5rem' }}>
+              <h4 style={{ fontSize: '0.75rem', fontWeight: '600', color: '#1e40af', marginBottom: '0.5rem' }}>快速操作</h4>
+              <div style={{ fontSize: '0.75rem', color: '#1d4ed8' }}>
+                <div style={{ marginBottom: '0.25rem' }}>• <kbd style={{ padding: '0.125rem 0.25rem', backgroundColor: 'white', borderRadius: '0.125rem', fontSize: '0.75rem' }}>双击</kbd> 白板创建节点</div>
+                <div style={{ marginBottom: '0.25rem' }}>• <kbd style={{ padding: '0.125rem 0.25rem', backgroundColor: 'white', borderRadius: '0.125rem', fontSize: '0.75rem' }}>右键</kbd> 节点显示工具栏</div>
+                <div style={{ marginBottom: '0.25rem' }}>• <kbd style={{ padding: '0.125rem 0.25rem', backgroundColor: 'white', borderRadius: '0.125rem', fontSize: '0.75rem' }}>双击</kbd> 节点打开编辑</div>
+                <div>• <kbd style={{ padding: '0.125rem 0.25rem', backgroundColor: 'white', borderRadius: '0.125rem', fontSize: '0.75rem' }}>拖拽</kbd> 连接点创建连线</div>
               </div>
             </div>
           </div>
@@ -139,7 +180,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       case 'graph':
         return (
-          <div className="flex-1 p-3">
+          <div style={{ flex: '1', padding: '0.75rem' }}>
             <h3 className="text-sm font-semibold text-gray-800 mb-3">图谱工具</h3>
             <div className="space-y-2">
               <button className="w-full px-3 py-2 bg-white border border-gray-300 rounded text-sm text-left hover:bg-gray-50 transition-colors">
@@ -217,7 +258,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white' }}>
       {/* 顶部标题栏 */}
       <div className="h-8 bg-gray-900 flex items-center justify-center text-white text-sm font-medium">
         图谱笔记系统 v2.0

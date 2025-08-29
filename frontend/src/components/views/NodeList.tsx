@@ -19,9 +19,9 @@ export const NodeList: React.FC<NodeListProps> = ({ className }) => {
 
   if (!currentKnowledgeBase) {
     return (
-      <div className={`p-3 ${className}`}>
-        <div className="text-center text-gray-500">
-          <p className="text-sm">请先加载知识库</p>
+      <div className={className} style={{ padding: '0.75rem' }}>
+        <div style={{ textAlign: 'center', color: '#6b7280' }}>
+          <p style={{ fontSize: '0.875rem' }}>请先加载知识库</p>
         </div>
       </div>
     );
@@ -86,31 +86,61 @@ export const NodeList: React.FC<NodeListProps> = ({ className }) => {
   };
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={className} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* 搜索栏和切换 */}
-      <div className="p-3 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-gray-800">
+      <div style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>
             {showRelations ? '关系列表' : '节点列表'}
           </h3>
-          <div className="flex space-x-1">
+          <div style={{ display: 'flex', gap: '0.25rem' }}>
             <button
               onClick={() => setShowRelations(false)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                !showRelations 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.75rem',
+                borderRadius: '0.25rem',
+                transition: 'colors 0.2s',
+                backgroundColor: !showRelations ? '#dbeafe' : 'transparent',
+                color: !showRelations ? '#1e40af' : '#4b5563',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                if (showRelations) {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (showRelations) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               🔸 节点
             </button>
             <button
               onClick={() => setShowRelations(true)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                showRelations 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.75rem',
+                borderRadius: '0.25rem',
+                transition: 'colors 0.2s',
+                backgroundColor: showRelations ? '#dbeafe' : 'transparent',
+                color: showRelations ? '#1e40af' : '#4b5563',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                if (!showRelations) {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!showRelations) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               🔗 关系
             </button>
@@ -121,47 +151,76 @@ export const NodeList: React.FC<NodeListProps> = ({ className }) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder={showRelations ? "搜索关系..." : "搜索节点..."}
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{
+            width: '100%',
+            padding: '0.5rem 0.75rem',
+            fontSize: '0.875rem',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.25rem',
+            outline: 'none'
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = '#3b82f6';
+            e.target.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = '#d1d5db';
+            e.target.style.boxShadow = 'none';
+          }}
         />
       </div>
 
       {/* 项目列表 */}
-      <div className="flex-1 overflow-y-auto">
+      <div style={{ flex: '1', overflowY: 'auto' }}>
         {displayItems.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 text-sm">
+          <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
             {searchTerm ? `未找到匹配的${showRelations ? '关系' : '节点'}` : 
              showRelations ? '暂无关系' : '暂无节点'}
           </div>
         ) : (
-          <div className="space-y-1 p-2">
+          <div style={{ padding: '0.5rem' }}>
             {displayItems.map(({ type, item }) => (
               <div
                 key={item.meta.id}
-                className="group flex items-start p-2 rounded cursor-pointer hover:bg-gray-50 transition-colors"
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  padding: '0.5rem',
+                  borderRadius: '0.25rem',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  marginBottom: '0.25rem'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
                 onClick={() => {
                   if (type === 'node') handleNodeClick(item.meta.id);
                   else if (type === 'relation') handleRelationClick(item.meta.id);
                   else if (type === 'edge') handleEdgeClick(item.meta.id);
                 }}
               >
-                <div className="flex items-center mr-2">
+                <div style={{ display: 'flex', alignItems: 'center', marginRight: '0.5rem' }}>
                   {type === 'node' ? (
-                    <span className="text-blue-600">🔸</span>
+                    <span style={{ color: '#2563eb' }}>🔸</span>
                   ) : type === 'relation' ? (
-                    <span className="text-purple-600">🔗</span>
+                    <span style={{ color: '#9333ea' }}>🔗</span>
                   ) : (
-                    <span className="text-green-600">➡️</span>
+                    <span style={{ color: '#16a34a' }}>➡️</span>
                   )}
                 </div>
                 
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate mb-1">
+                <div style={{ flex: '1', minWidth: '0' }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '0.25rem' }}>
                     {type === 'edge' ? 
                       `${(item as any).sourceNodeId} → ${(item as any).targetNodeId}` : 
                       (item as any).title
                     }
                   </div>
-                  <div className="text-xs text-gray-500 mb-1">
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
                     {type === 'node' ? 
                       `${(item as any).blocks.length} 个内容块` :
                     type === 'relation' ?
@@ -172,23 +231,31 @@ export const NodeList: React.FC<NodeListProps> = ({ className }) => {
                   
                   {/* 标签 */}
                   {item.meta.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                       {item.meta.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className={`px-1.5 py-0.5 text-xs rounded ${
-                            type === 'node' 
-                              ? 'bg-blue-100 text-blue-800'
+                          style={{
+                            padding: '0.125rem 0.375rem',
+                            fontSize: '0.75rem',
+                            borderRadius: '0.25rem',
+                            backgroundColor: type === 'node' 
+                              ? '#dbeafe'
                               : type === 'relation'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}
+                              ? '#f3e8ff'
+                              : '#dcfce7',
+                            color: type === 'node'
+                              ? '#1e40af'
+                              : type === 'relation'
+                              ? '#7c3aed'
+                              : '#166534'
+                          }}
                         >
                           {tag}
                         </span>
                       ))}
                       {item.meta.tags.length > 3 && (
-                        <span className="text-xs text-gray-400">
+                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
                           +{item.meta.tags.length - 3}
                         </span>
                       )}
@@ -197,14 +264,44 @@ export const NodeList: React.FC<NodeListProps> = ({ className }) => {
                 </div>
                 
                 {/* 操作按钮 */}
-                <div className="opacity-0 group-hover:opacity-100 flex space-x-1 transition-opacity ml-2">
+                <div 
+                  style={{ 
+                    opacity: '0', 
+                    display: 'flex', 
+                    gap: '0.25rem', 
+                    transition: 'opacity 0.2s', 
+                    marginLeft: '0.5rem' 
+                  }}
+                  ref={(el) => {
+                    if (el && el.parentElement) {
+                      const parent = el.parentElement;
+                      const showButtons = () => { el.style.opacity = '1'; };
+                      const hideButtons = () => { el.style.opacity = '0'; };
+                      parent.addEventListener('mouseenter', showButtons);
+                      parent.addEventListener('mouseleave', hideButtons);
+                    }
+                  }}
+                >
                   {type === 'node' && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCreateSpatialView(item.meta.id);
                       }}
-                      className="p-1 hover:bg-gray-200 rounded text-xs"
+                      style={{
+                        padding: '0.25rem',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.75rem',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#e5e7eb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
                       title="基于此节点创建空间视图"
                     >
                       🗺️
@@ -217,7 +314,20 @@ export const NodeList: React.FC<NodeListProps> = ({ className }) => {
                       else if (type === 'relation') handleRelationClick(item.meta.id);
                       else if (type === 'edge') handleEdgeClick(item.meta.id);
                     }}
-                    className="p-1 hover:bg-gray-200 rounded text-xs"
+                    style={{
+                      padding: '0.25rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                     title={`查看${type === 'node' ? '节点' : type === 'relation' ? '关系节点' : '边'}详情`}
                   >
                     👁️

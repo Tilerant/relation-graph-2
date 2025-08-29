@@ -1,5 +1,20 @@
 # 实体定义与数据模型
 
+## 分层架构设计原则
+
+系统采用**三层分离架构**，实现知识结构的语义纯净性与白板交互的灵活性：
+
+```
+知识层（语义）→ 视图层（表现）→ 装饰层（无语义）
+    ↓             ↓            ↓
+  Node/Edge     Shape/Style   Drawing/Sticker
+```
+
+### 设计理念
+- **知识层**: 保持干净的语义信息，是AI理解和操作的核心
+- **视图层**: 负责不同展示方式，同一知识可以有多种视觉表现
+- **装饰层**: 纯视觉元素，不携带语义信息，不进入知识库
+
 ## 核心实体概览
 
 系统基于三种核心实体构建知识图谱：**节点(Node)**、**边(Edge)**、**关系节点(RelationNode)**。每种实体都具有版本化的元数据和可扩展的属性系统。
@@ -204,7 +219,7 @@ type BlockType = 'text' | 'image' | 'file' | 'code' | 'table' | 'embed';
 ```
 
 ### 块类型详解
-- **text**: 富文本内容，支持 PlateJS 格式
+- **text**: 富文本内容，支持 TipTap 格式
 - **image**: 图片文件，包含URL和元数据
 - **file**: 文件附件，支持各种格式
 - **code**: 代码片段，包含语言标识
@@ -311,3 +326,161 @@ interface MetaProperties {
 - 支持孤立节点的自动检测和清理
 - 无效引用的自动修复或警告
 - 临时视图的定期清理机制
+
+## 8. 白板兼容性设计
+
+### 白板元素与知识模型映射
+
+系统通过**分层架构**实现白板自由度与知识结构语义的完美结合：
+
+| 白板元素 | 知识层映射 | 视图层属性 | 装饰层处理 |
+|---------|-----------|-----------|----------|
+| **便签/文本框** | `Node` 或 `Block` | `shape`, `color`, `size` | - |
+| **形状(矩形/圆形)** | `Node` | `shape: "rect"/"circle"` | - |
+| **箭头/连线** | `Edge` | `lineStyle`, `arrowType` | - |
+| **图片/图标** | `Node.thumbnail` 或 `Block` | `displayMode` | - |
+| **自由绘制** | - | - | `decorations[]` |
+| **贴纸/表情** | - | - | `decorations[]` |
+| **框选/分组** | `容器节点` 或 `超边` | `groupStyle` | - |
+
+### 分层数据处理策略
+
+#### 知识层（核心语义）
+```typescript
+// 白板操作自动提升为知识结构
+interface WhiteboardToKnowledge {
+  // 文本框 → 节点
+  createNodeFromTextBox(textBox: TextBox): Node;
+  
+  // 连线 → 边
+  createEdgeFromConnection(connection: Connection): Edge;
+  
+  // 分组 → 关系节点
+  createRelationFromGroup(group: Group): RelationNode;
+}
+```
+
+#### 视图层（表现形式）
+```typescript
+// 每个实体在不同视图中的表现
+interface ViewLayerProperties {
+  // 节点视图属性
+  nodeViewConfig: {
+    shape: 'rect' | 'circle' | 'diamond' | 'custom';
+    color: string;
+    borderStyle: string;
+    displayMode: 'dot' | 'box' | 'card';
+  };
+  
+  // 边视图属性  
+  edgeViewConfig: {
+    lineStyle: 'solid' | 'dashed' | 'dotted';
+    arrowType: 'none' | 'simple' | 'filled';
+    curvature: number;
+  };
+}
+```
+
+#### 装饰层（纯视觉）
+```typescript
+// 不进入知识库的装饰元素
+interface DecorationLayer {
+  freeDrawings: FreeDrawing[];      // 自由绘制
+  stickers: Sticker[];              // 贴纸表情
+  annotations: Annotation[];        // 批注标记
+  highlights: Highlight[];          // 高亮区域
+}
+
+interface FreeDrawing {
+  id: string;
+  path: string;                     // SVG路径
+  style: DrawingStyle;
+  viewId: string;                   // 所属视图
+}
+```
+
+### 白板交互转换规则
+
+#### 1. 语义提升机制
+```typescript
+// 装饰层 → 视图层 → 知识层的升级路径
+interface SemanticUpgrade {
+  // 将自由绘制转换为节点
+  promoteDrawingToNode(drawing: FreeDrawing): Node;
+  
+  // 将分组转换为关系
+  promoteGroupToRelation(group: ViewGroup): RelationNode;
+  
+  // 将装饰转换为属性
+  promoteAnnotationToAttribute(annotation: Annotation, entityId: EntityId): void;
+}
+```
+
+#### 2. AI协作优势
+```typescript
+// AI主要在知识层工作
+interface AIKnowledgeOperations {
+  // 智能关系建议
+  suggestConnections(nodes: Node[]): Edge[];
+  
+  // 内容智能生成
+  generateNodeContent(context: Node[], prompt: string): Node;
+  
+  // 知识结构优化
+  optimizeLayout(knowledge: KnowledgeBase): LayoutSuggestion[];
+}
+
+// AI辅助视图优化
+interface AIViewOptimization {
+  // 自动布局优化
+  optimizeLayout(view: View): LayoutInfo;
+  
+  // 视觉样式建议
+  suggestStyling(content: string): ViewLayerProperties;
+}
+```
+
+### 渐进式使用体验
+
+#### 初级用户：自由白板
+1. 在白板上随意绘制、添加文本
+2. 系统自动识别可语义化的元素
+3. 提示用户是否转换为结构化知识
+
+#### 中级用户：混合模式
+1. 直接创建节点和边
+2. 使用装饰层进行标注和美化
+3. AI协助优化布局和样式
+
+#### 高级用户：知识建模
+1. 直接操作知识层结构
+2. 多视图展示同一知识
+3. AI深度协作进行内容生成和关系发现
+
+### 数据持久化策略
+
+```typescript
+interface PersistenceLayer {
+  // 知识层：持久化到主数据库
+  knowledge: {
+    nodes: Record<EntityId, Node>;
+    edges: Record<EntityId, Edge>;
+    relations: Record<EntityId, RelationNode>;
+  };
+  
+  // 视图层：按视图存储
+  views: Record<ViewId, {
+    layout: LayoutInfo;
+    styles: ViewLayerProperties;
+  }>;
+  
+  // 装饰层：视图级别存储，可选持久化
+  decorations: Record<ViewId, DecorationLayer>;
+}
+```
+
+这种设计确保了：
+- **语义纯净**: 知识层不被视觉元素污染
+- **交互灵活**: 白板体验完全自由
+- **AI友好**: AI可专注语义操作，视图自动适配
+- **渐进增强**: 从简单绘制到复杂知识建模的平滑过渡

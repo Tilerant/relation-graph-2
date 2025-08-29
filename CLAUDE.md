@@ -20,7 +20,7 @@ This is a **React-based knowledge graph system** that visualizes and manages int
 - **Vite** for build tooling
 - **React Flow** (@xyflow/react) for interactive graph visualization
 - **Zustand** for state management
-- **TailwindCSS** for styling
+- **Native CSS** with CSS modules and CSS variables for styling
 - **React DND** for drag-and-drop functionality
 
 ## Architecture Overview

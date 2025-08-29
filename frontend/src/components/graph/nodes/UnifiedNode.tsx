@@ -42,38 +42,76 @@ const DotNode: React.FC<{
   isSelected: boolean;
 }> = ({ entityProps, isSelected }) => {
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       {/* 圆点 */}
       <div 
-        className={`w-3 h-3 rounded-full border-2 cursor-pointer transition-all ${
-          entityProps.isMissing
-            ? isSelected
-              ? 'bg-red-500 border-red-600 shadow-lg'
-              : 'bg-red-300 border-red-400 hover:border-red-600'
-            : isSelected 
-              ? entityProps.isRelation 
-                ? 'bg-purple-500 border-purple-600 shadow-lg' 
-                : 'bg-blue-500 border-blue-600 shadow-lg'
-              : entityProps.isRelation
-                ? 'bg-purple-300 border-purple-400 hover:border-purple-600'
-                : 'bg-white border-gray-400 hover:border-gray-600'
-        }`}
+        style={{
+          width: '0.75rem',
+          height: '0.75rem',
+          borderRadius: '50%',
+          border: '2px solid',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          backgroundColor: entityProps.isMissing
+            ? isSelected ? '#ef4444' : '#fca5a5'
+            : isSelected
+              ? entityProps.isRelation ? '#a855f7' : '#3b82f6'
+              : entityProps.isRelation ? '#c084fc' : 'white',
+          borderColor: entityProps.isMissing
+            ? isSelected ? '#dc2626' : '#f87171'
+            : isSelected
+              ? entityProps.isRelation ? '#9333ea' : '#2563eb'
+              : entityProps.isRelation ? '#a855f7' : '#9ca3af',
+          boxShadow: isSelected ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' : 'none'
+        }}
+        onMouseEnter={(e) => {
+          if (!isSelected) {
+            if (entityProps.isMissing) {
+              e.currentTarget.style.borderColor = '#dc2626';
+            } else if (entityProps.isRelation) {
+              e.currentTarget.style.borderColor = '#9333ea';
+            } else {
+              e.currentTarget.style.borderColor = '#4b5563';
+            }
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isSelected) {
+            if (entityProps.isMissing) {
+              e.currentTarget.style.borderColor = '#f87171';
+            } else if (entityProps.isRelation) {
+              e.currentTarget.style.borderColor = '#a855f7';
+            } else {
+              e.currentTarget.style.borderColor = '#9ca3af';
+            }
+          }
+        }}
       />
       
       {/* 标题 */}
       {entityProps.title && (
         <div 
-          className="absolute top-5 left-1/2 transform -translate-x-1/2 text-sm font-medium text-gray-700 whitespace-nowrap pointer-events-none"
+          style={{
+            position: 'absolute',
+            top: '1.25rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            color: '#374151',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none'
+          }}
         >
           {entityProps.title}
         </div>
       )}
       
       {/* 连接点 */}
-      <Handle type="target" position={Position.Top} className="!bg-transparent !border-0" />
-      <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0" />
-      <Handle type="target" position={Position.Left} className="!bg-transparent !border-0" />
-      <Handle type="source" position={Position.Right} className="!bg-transparent !border-0" />
+      <Handle type="target" position={Position.Top} style={{ backgroundColor: 'transparent', border: '0' }} />
+      <Handle type="source" position={Position.Bottom} style={{ backgroundColor: 'transparent', border: '0' }} />
+      <Handle type="target" position={Position.Left} style={{ backgroundColor: 'transparent', border: '0' }} />
+      <Handle type="source" position={Position.Right} style={{ backgroundColor: 'transparent', border: '0' }} />
     </div>
   );
 };

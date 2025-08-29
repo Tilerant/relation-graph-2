@@ -107,11 +107,27 @@ const BoxEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             pointerEvents: 'all',
           }}
-          className={`px-2 py-1 text-xs rounded border cursor-pointer transition-all ${
-            selected 
-              ? 'bg-blue-50 border-blue-400 text-blue-800' 
-              : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-          }`}
+          style={{
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.75rem',
+            borderRadius: '0.25rem',
+            border: '1px solid',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            backgroundColor: selected ? '#eff6ff' : 'white',
+            borderColor: selected ? '#60a5fa' : '#d1d5db',
+            color: selected ? '#1e40af' : '#374151'
+          }}
+          onMouseEnter={(e) => {
+            if (!selected) {
+              e.currentTarget.style.borderColor = '#9ca3af';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!selected) {
+              e.currentTarget.style.borderColor = '#d1d5db';
+            }
+          }}
         >
           {getLabelText()}
         </div>
@@ -173,11 +189,26 @@ const DotEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
         >
           <div
             onClick={handleDotClick}
-            className={`w-4 h-4 rounded-full border-2 cursor-pointer transition-all ${
-              selected 
-                ? 'bg-blue-500 border-blue-600' 
-                : 'bg-white border-gray-400 hover:border-gray-600'
-            }`}
+            style={{
+              width: '1rem',
+              height: '1rem',
+              borderRadius: '50%',
+              border: '2px solid',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              backgroundColor: selected ? '#3b82f6' : 'white',
+              borderColor: selected ? '#2563eb' : '#9ca3af'
+            }}
+            onMouseEnter={(e) => {
+              if (!selected) {
+                e.currentTarget.style.borderColor = '#4b5563';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!selected) {
+                e.currentTarget.style.borderColor = '#9ca3af';
+              }
+            }}
             title={edge.meta.semanticLabel}
           />
         </div>
@@ -259,30 +290,50 @@ const CardEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
         >
           <div
             onClick={handleCardClick}
-            className={`bg-white rounded-lg border shadow-sm cursor-pointer transition-all min-w-24 max-w-48 ${
-              selected 
-                ? 'border-blue-400 shadow-lg ring-1 ring-blue-200' 
-                : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-            }`}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '0.5rem',
+              border: '1px solid',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              minWidth: '6rem',
+              maxWidth: '12rem',
+              borderColor: selected ? '#60a5fa' : '#e5e7eb',
+              boxShadow: selected 
+                ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgb(147, 197, 253)' 
+                : '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+            }}
+            onMouseEnter={(e) => {
+              if (!selected) {
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!selected) {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+              }
+            }}
           >
             {/* 语义标签 */}
-            <div className="px-2 py-1 border-b border-gray-100">
-              <div className="text-xs font-medium text-gray-900 truncate">
+            <div style={{ padding: '0.25rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: '500', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {edge.meta.semanticLabel}
               </div>
             </div>
             
             {/* 内容块预览 */}
             {viewConfig.showBlocks && edge.blocks.length > 0 && (
-              <div className="px-2 py-1 space-y-1">
+              <div style={{ padding: '0.25rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {edge.blocks.slice(0, 2).map((block, index) => (
-                  <div key={block.id} className="text-xs text-gray-600 truncate">
+                  <div key={block.id} style={{ fontSize: '0.75rem', color: '#4b5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {renderBlockPreview(block)}
                   </div>
                 ))}
                 
                 {edge.blocks.length > 2 && (
-                  <div className="text-xs text-gray-400 italic">
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontStyle: 'italic' }}>
                     +{edge.blocks.length - 2} 更多
                   </div>
                 )}
@@ -291,8 +342,8 @@ const CardEdge: React.FC<EdgeProps<EdgeData>> = (props) => {
             
             {/* 超边指示器 */}
             {edge.meta.isHyperEdge && (
-              <div className="px-2 pb-1">
-                <span className="inline-block px-1 py-0.5 text-xs bg-purple-100 text-purple-800 rounded">
+              <div style={{ padding: '0 0.5rem 0.25rem' }}>
+                <span style={{ display: 'inline-block', padding: '0.125rem 0.25rem', fontSize: '0.75rem', backgroundColor: '#f3e8ff', color: '#6b21a8', borderRadius: '0.25rem' }}>
                   超边
                 </span>
               </div>

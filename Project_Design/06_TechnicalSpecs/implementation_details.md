@@ -1,5 +1,101 @@
 # 技术实现细节
 
+## 分层架构实现策略
+
+### 三层分离的技术实现
+
+系统采用**知识层-视图层-装饰层**分离架构，每层有明确的技术实现方案：
+
+```typescript
+// 分层架构接口定义
+interface LayeredArchitecture {
+  // 知识层：纯语义数据
+  knowledgeLayer: {
+    entities: Record<EntityId, Node | Edge | RelationNode>;
+    operations: KnowledgeOperations;
+    aiIntegration: AICollaborationEngine;
+  };
+  
+  // 视图层：表现形式
+  viewLayer: {
+    renderers: Record<ViewType, ViewRenderer>;
+    layouts: Record<ViewId, LayoutManager>;
+    styles: ViewStyleManager;
+  };
+  
+  // 装饰层：纯视觉
+  decorationLayer: {
+    drawings: Record<ViewId, FreeDrawing[]>;
+    stickers: Record<ViewId, Sticker[]>;
+    annotations: Record<ViewId, Annotation[]>;
+  };
+}
+```
+
+### 白板元素处理流程
+
+#### 1. 输入处理分流
+```typescript
+interface InputProcessor {
+  // 白板交互输入处理
+  processWhiteboardInput(input: WhiteboardInput): LayerAction {
+    if (input.type === 'create_text_box') {
+      // 文本框 → 知识层节点
+      return {
+        layer: 'knowledge',
+        action: 'createNode',
+        data: { title: input.text, type: 'concept' }
+      };
+    }
+    
+    if (input.type === 'free_draw') {
+      // 自由绘制 → 装饰层
+      return {
+        layer: 'decoration',
+        action: 'addDrawing',
+        data: { path: input.path, style: input.style }
+      };
+    }
+    
+    if (input.type === 'connect_nodes') {
+      // 连线 → 知识层边
+      return {
+        layer: 'knowledge',
+        action: 'createEdge',
+        data: { from: input.sourceId, to: input.targetId }
+      };
+    }
+  }
+}
+```
+
+#### 2. 层间数据转换
+```typescript
+interface LayerConverter {
+  // 装饰层 → 视图层提升
+  promoteDecorationToView(decoration: Decoration): ViewElement {
+    return {
+      id: generateId(),
+      type: 'visual_element',
+      style: decoration.style,
+      position: decoration.position,
+      content: decoration.content
+    };
+  }
+  
+  // 视图层 → 知识层提升
+  promoteViewToKnowledge(viewElement: ViewElement): KnowledgeEntity {
+    if (viewElement.hasSemanticHint) {
+      return {
+        type: viewElement.semanticType,
+        title: viewElement.content,
+        meta: generateMetadata()
+      };
+    }
+  }
+}
+```
+
 ## 核心技术栈
 
 ### 前端框架与库
@@ -10,8 +106,8 @@
   "vite": "^7.0.4",              // 现代构建工具
   "zustand": "^5.0.7",           // 轻量级状态管理
   "@xyflow/react": "^12.8.2",    // 图形交互库
-  "platejs": "^49.2.3",          // 富文本编辑框架
-  "tailwindcss": "^4.1.11",      // 原子化CSS框架
+  "@tiptap/react": "^2.2.0",     // 轻量级富文本编辑器
+  // 样式使用原生CSS模块化方案
   "react-dnd": "^16.0.1"         // 拖拽功能库
 }
 ```
@@ -29,32 +125,66 @@
 
 ## 状态管理架构
 
-### Zustand Store 设计
+### 分层状态管理设计
 
-#### 1. 状态结构
+#### 1. 分层状态结构
 ```typescript
-interface GraphState {
-  // 数据状态
-  currentKnowledgeBase: KnowledgeBase | null;
-  currentViewId: EntityId | null;
-  openViewIds: EntityId[];
+interface LayeredGraphState {
+  // 知识层状态
+  knowledge: {
+    currentKnowledgeBase: KnowledgeBase | null;
+    knowledgeBases: Record<string, KnowledgeBase>;
+    aiSuggestions: RelationSuggestion[];
+    generationHistory: GenerationRecord[];
+  };
   
-  // 选择状态  
-  selectedNodeIds: Set<EntityId>;
-  selectedEdgeIds: Set<EntityId>;
-  selectedRelationIds: Set<EntityId>;
+  // 视图层状态  
+  views: {
+    currentViewId: EntityId | null;
+    openViewIds: EntityId[];
+    viewConfigs: Record<EntityId, ViewConfig>;
+    layoutCache: Record<string, LayoutInfo>;
+  };
   
-  // 视图配置
-  nodeViewConfigs: Record<EntityId, NodeViewConfig>;
-  edgeViewConfigs: Record<EntityId, EdgeViewConfig>;
-  relationViewConfigs: Record<EntityId, RelationViewConfig>;
+  // 装饰层状态
+  decorations: Record<ViewId, {
+    drawings: FreeDrawing[];
+    stickers: Sticker[];
+    annotations: Annotation[];
+    highlights: Highlight[];
+  }>;
+  
+  // 选择状态（跨层）
+  selection: {
+    selectedEntities: SelectionState;
+    selectionMode: 'single' | 'multiple' | 'area';
+    selectionLayer: 'knowledge' | 'view' | 'decoration';
+  };
+  
+  // AI协作状态
+  ai: {
+    isProcessing: boolean;
+    currentTask: AITask | null;
+    suggestions: AISuggestion[];
+    preferences: AIPreferences;
+  };
+  
+  // 插件系统状态
+  plugins: {
+    installed: Record<string, PluginInfo>;
+    active: Set<string>;
+    permissions: Record<string, Permission[]>;
+    marketplace: PluginMarketplace;
+  };
   
   // UI状态
-  isLoading: boolean;
-  error: string | null;
-  rightPanelOpen: boolean;
-  rightPanelContent: 'node' | 'edge' | 'relation' | null;
-  rightPanelEntityId: EntityId | null;
+  ui: {
+    isLoading: boolean;
+    error: string | null;
+    rightPanelOpen: boolean;
+    currentTool: string;
+    whiteboardMode: 'draw' | 'select' | 'text';
+  };
 }
 ```
 
@@ -340,15 +470,18 @@ const onNodeDragStop = useCallback(async (event: React.MouseEvent, flowNode: Flo
 }, []);
 ```
 
-## PlateJS 集成实现
+## TipTap 集成实现
 
 ### 1. 编辑器配置
 
-#### 插件系统
+#### 基础配置
 ```typescript
-import { Plate, PlateContent, ParagraphPlugin, PlateElement } from 'platejs/react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { Document } from '@tiptap/extension-document';
+import { Paragraph } from '@tiptap/extension-paragraph';
+import { Text } from '@tiptap/extension-text';
 
-const PlateEditor: React.FC<PlateEditorProps> = ({ value, onChange, onBlur, onKeyDown, placeholder, autoFocus }) => {
+const TipTapEditor: React.FC<PlateEditorProps> = ({ value, onChange, onBlur, onKeyDown, placeholder, autoFocus }) => {
   const plugins = useMemo(() => [
     ParagraphPlugin.withComponent(PlateElement)
   ], []);
@@ -590,3 +723,358 @@ const onRenderCallback = (id: string, phase: string, actualDuration: number) => 
   }
 };
 ```
+
+## AI协作系统实现
+
+### 1. AI引擎集成架构
+
+#### MCP协议集成
+```typescript
+interface MCPIntegration {
+  // MCP客户端配置
+  client: {
+    protocol: 'MCP/1.0';
+    transport: 'websocket' | 'stdio' | 'http';
+    capabilities: MCPCapabilities;
+  };
+  
+  // AI服务提供商集成
+  providers: {
+    openai: OpenAIProvider;
+    anthropic: AnthropicProvider;
+    local: LocalProvider;
+  };
+  
+  // 工具注册
+  tools: {
+    knowledgeGraph: KnowledgeGraphTool;
+    contentGeneration: ContentGenerationTool;
+    relationAnalysis: RelationAnalysisTool;
+  };
+}
+```
+
+#### AI协作流程实现
+```typescript
+interface AICollaborationFlow {
+  // 智能关系建议
+  async suggestRelations(nodes: Node[]): Promise<RelationSuggestion[]> {
+    const context = await this.buildContext(nodes);
+    const prompt = this.buildRelationPrompt(context);
+    
+    const response = await this.aiProvider.complete({
+      messages: [{ role: 'user', content: prompt }],
+      tools: [this.knowledgeGraphTool],
+      temperature: 0.3
+    });
+    
+    return this.parseRelationSuggestions(response);
+  }
+  
+  // 内容智能生成
+  async generateContent(prompt: string, context: KnowledgeContext): Promise<GeneratedContent> {
+    const enrichedPrompt = await this.enrichPromptWithContext(prompt, context);
+    
+    return await this.aiProvider.generateStructured({
+      prompt: enrichedPrompt,
+      schema: ContentSchema,
+      context: this.buildKnowledgeContext(context)
+    });
+  }
+  
+  // 知识结构优化
+  async optimizeStructure(knowledgeBase: KnowledgeBase): Promise<OptimizationSuggestion[]> {
+    const analysis = await this.analyzeKnowledgeStructure(knowledgeBase);
+    
+    return await this.aiProvider.suggest({
+      type: 'optimization',
+      data: analysis,
+      constraints: this.getOptimizationConstraints()
+    });
+  }
+}
+```
+
+### 2. 分层AI操作实现
+
+#### 知识层AI操作
+```typescript
+interface KnowledgeLayerAI {
+  // AI在知识层的核心操作
+  async processKnowledgeOperation(operation: AIKnowledgeOperation): Promise<Command[]> {
+    switch (operation.type) {
+      case 'generate_node':
+        return await this.generateNode(operation.prompt, operation.context);
+        
+      case 'suggest_connections':
+        return await this.suggestConnections(operation.nodes);
+        
+      case 'optimize_relations':
+        return await this.optimizeRelations(operation.relationNodes);
+        
+      case 'extract_entities':
+        return await this.extractEntities(operation.content);
+    }
+  }
+  
+  // 语义理解增强
+  async enhanceSemanticUnderstanding(entity: KnowledgeEntity): Promise<SemanticEnhancement> {
+    const semanticAnalysis = await this.aiProvider.analyze({
+      content: entity.content,
+      type: 'semantic_analysis',
+      context: await this.getRelatedEntities(entity.id)
+    });
+    
+    return {
+      enhancedAttributes: semanticAnalysis.attributes,
+      suggestedTags: semanticAnalysis.tags,
+      relationHints: semanticAnalysis.relations,
+      categoryPrediction: semanticAnalysis.category
+    };
+  }
+}
+```
+
+#### 视图层AI辅助
+```typescript
+interface ViewLayerAI {
+  // 自动布局优化
+  async optimizeLayout(view: View): Promise<LayoutOptimization> {
+    const graphAnalysis = await this.analyzeGraphStructure(view);
+    const layoutAlgorithm = await this.selectOptimalAlgorithm(graphAnalysis);
+    
+    return await this.aiProvider.optimize({
+      type: 'layout',
+      algorithm: layoutAlgorithm,
+      constraints: view.layoutConstraints,
+      objectives: ['clarity', 'aesthetics', 'compactness']
+    });
+  }
+  
+  // 视觉样式建议
+  async suggestVisualization(content: KnowledgeContent): Promise<VisualizationSuggestion> {
+    const contentAnalysis = await this.analyzeContentType(content);
+    
+    return await this.aiProvider.suggest({
+      type: 'visualization',
+      contentType: contentAnalysis.type,
+      complexity: contentAnalysis.complexity,
+      userPreferences: await this.getUserPreferences()
+    });
+  }
+}
+```
+
+## 插件系统实现
+
+### 1. 插件架构设计
+
+#### 插件生命周期管理
+```typescript
+interface PluginLifecycleManager {
+  // 插件安装流程
+  async install(pluginPackage: PluginPackage): Promise<InstallResult> {
+    // 1. 验证插件合法性
+    await this.validatePlugin(pluginPackage);
+    
+    // 2. 检查依赖关系
+    await this.resolveDependencies(pluginPackage.dependencies);
+    
+    // 3. 沙箱环境准备
+    const sandbox = await this.createSandbox(pluginPackage.manifest.permissions);
+    
+    // 4. 插件代码加载
+    const plugin = await this.loadPlugin(pluginPackage, sandbox);
+    
+    // 5. 注册插件服务
+    await this.registerPlugin(plugin);
+    
+    return { success: true, pluginId: plugin.id };
+  }
+  
+  // 插件激活
+  async activate(pluginId: string): Promise<void> {
+    const plugin = this.getPlugin(pluginId);
+    if (!plugin) throw new Error(`Plugin ${pluginId} not found`);
+    
+    // 权限检查
+    await this.checkPermissions(plugin.manifest.permissions);
+    
+    // 初始化插件
+    await plugin.initialize(this.createPluginContext(plugin));
+    
+    // 注册事件监听
+    this.eventBus.register(plugin.id, plugin.eventHandlers);
+    
+    this.activePlugins.add(pluginId);
+  }
+}
+```
+
+#### 插件沙箱隔离
+```typescript
+interface PluginSandbox {
+  // 安全执行环境
+  createSecureContext(permissions: Permission[]): PluginContext {
+    const context = {
+      // 有限的API访问
+      api: this.createRestrictedAPI(permissions),
+      
+      // 事件通信
+      eventBus: this.createPluginEventBus(),
+      
+      // 存储访问
+      storage: this.createPluginStorage(permissions.includes('storage')),
+      
+      // 网络访问（如果允许）
+      network: permissions.includes('network') ? this.networkAPI : null
+    };
+    
+    // 代码执行沙箱
+    return new Proxy(context, {
+      get: (target, prop) => {
+        if (!this.isAllowedAccess(prop, permissions)) {
+          throw new Error(`Access denied: ${String(prop)}`);
+        }
+        return target[prop];
+      }
+    });
+  }
+  
+  // 资源隔离
+  isolateResources(plugin: Plugin): ResourceIsolation {
+    return {
+      memory: new MemoryLimiter(plugin.manifest.resources.maxMemory),
+      cpu: new CPULimiter(plugin.manifest.resources.maxCPU),
+      storage: new StorageLimiter(plugin.manifest.resources.maxStorage),
+      network: new NetworkLimiter(plugin.manifest.resources.maxBandwidth)
+    };
+  }
+}
+```
+
+### 2. AI功能插件实现
+
+#### AI插件标准接口
+```typescript
+interface AIFunctionPlugin extends Plugin {
+  type: 'ai-function';
+  
+  // AI功能定义
+  aiFunction: {
+    name: string;
+    description: string;
+    parameters: ParameterSchema;
+    examples: Example[];
+  };
+  
+  // 执行接口
+  async execute(
+    params: AIFunctionParameters,
+    context: KnowledgeContext
+  ): Promise<AIFunctionResult>;
+  
+  // 流式执行（支持实时响应）
+  async *executeStream(
+    params: AIFunctionParameters,
+    context: KnowledgeContext
+  ): AsyncGenerator<AIFunctionPartialResult, AIFunctionResult>;
+}
+```
+
+#### 插件市场集成
+```typescript
+interface PluginMarketplace {
+  // 插件发现
+  async searchPlugins(query: PluginSearchQuery): Promise<PluginSearchResult[]> {
+    return await this.marketplaceAPI.search({
+      query: query.text,
+      category: query.category,
+      tags: query.tags,
+      compatibility: this.systemVersion,
+      rating: { min: query.minRating }
+    });
+  }
+  
+  // 插件推荐
+  async getRecommendations(context: RecommendationContext): Promise<PluginRecommendation[]> {
+    const userProfile = await this.buildUserProfile();
+    const usagePattern = await this.analyzeUsagePattern();
+    
+    return await this.aiProvider.recommend({
+      userProfile,
+      usagePattern,
+      currentPlugins: this.getInstalledPlugins(),
+      context: context
+    });
+  }
+  
+  // 自动更新
+  async checkUpdates(): Promise<PluginUpdate[]> {
+    const installedPlugins = this.getInstalledPlugins();
+    const updateChecks = installedPlugins.map(plugin => 
+      this.marketplaceAPI.checkVersion(plugin.id, plugin.version)
+    );
+    
+    const results = await Promise.all(updateChecks);
+    return results.filter(result => result.hasUpdate);
+  }
+}
+```
+
+### 3. 插件间通信机制
+
+#### 事件驱动通信
+```typescript
+interface PluginMessageBus {
+  // 插件间消息传递
+  async sendMessage(
+    fromPlugin: string,
+    toPlugin: string,
+    message: PluginMessage
+  ): Promise<PluginMessageResponse> {
+    // 权限检查
+    await this.checkMessagingPermissions(fromPlugin, toPlugin);
+    
+    // 消息验证
+    await this.validateMessage(message);
+    
+    // 异步传递
+    const response = await this.routeMessage(toPlugin, message);
+    
+    return response;
+  }
+  
+  // 广播事件
+  broadcastEvent(event: PluginEvent, scope: BroadcastScope): void {
+    const targetPlugins = this.resolveScope(scope);
+    
+    targetPlugins.forEach(plugin => {
+      if (this.hasPermission(plugin.id, event.type)) {
+        this.deliverEvent(plugin.id, event);
+      }
+    });
+  }
+  
+  // 服务注册与发现
+  registerService(pluginId: string, service: PluginService): void {
+    this.serviceRegistry.set(service.name, {
+      pluginId,
+      service,
+      permissions: this.getPlugin(pluginId).manifest.permissions
+    });
+  }
+  
+  async discoverServices(query: ServiceQuery): Promise<PluginService[]> {
+    return Array.from(this.serviceRegistry.values())
+      .filter(registration => this.matchesQuery(registration.service, query))
+      .map(registration => registration.service);
+  }
+}
+```
+
+这种分层架构的技术实现确保了：
+- **AI协作的深度集成**: 通过MCP协议和分层操作实现大模型的深度参与
+- **插件系统的安全性**: 沙箱隔离和权限管理保证系统稳定性  
+- **功能的可扩展性**: 清晰的接口设计支持第三方功能扩展
+- **用户体验的一致性**: 统一的状态管理和事件通信机制
