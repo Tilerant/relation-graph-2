@@ -3,47 +3,70 @@
 ## 设计理念
 
 ### 核心原则
-标签系统是知识图谱的核心基础设施，不仅用于数据组织和用户交互，更是图算法、语义查询和知识推理的一等公民。
+基于**节点类型化架构**，标签系统现在作为**ContentNode**和**RelationNode**的特殊属性系统，为不同类型节点提供专用的语义标注能力。
 
 ### 设计目标
-1. **语义明确性** - 通过结构化标签提供清晰的语义定义
-2. **灵活性与约束平衡** - 模板初始化提供指导，使用中保持自由
-3. **规范化管理** - 避免标签重复和数据污染
-4. **图算法支持** - 标签直接参与图建模、查询、推理与可视化
-5. **多语言国际化** - 支持多语言显示和别名系统
+1. **类型专用性** - 不同节点类型拥有专属的标签系统
+2. **语义明确性** - 通过类型化标签提供清晰的语义定义  
+3. **功能分工** - 实体标签属于内容节点，语义标签属于关系节点
+4. **图算法支持** - 标签直接参与类型化查询、推理与可视化
+5. **差异化处理** - 不同标签类型支持不同的操作和功能
 
-## 标签系统架构
+## 节点类型化标签架构
 
-### 1. 混合标签体系
+### 1. 类型专用标签体系
 
-系统采用**结构化标签 + 通用标签**的混合架构：
+基于节点类型化架构，不同节点类型拥有专属的标签系统：
 
 ```typescript
-interface MetaProperties {
-  // 结构化标签（系统级）
-  entityLabel?: string;         // 实体标签ID（节点）
-  semanticLabel?: string;       // 语义标签ID（边）
-  relationType?: string;        // 关系类型ID（关系节点）
-  
-  // 通用标签（用户级）
-  tags: string[];              // 自由标签列表
-  
-  // 其他元数据...
-  id: EntityId;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  version: number;
+// ContentNode 专属实体标签
+interface ContentNode extends BaseNode {
+  type: NodeType.CONTENT;
+  entityTags: EntityTag[];      // 专属：实体标签系统
+  content: string;
+  blocks: Block[];
+  attributes: ContentAttributes;
+}
+
+// RelationNode 专属语义标签
+interface RelationNode extends BaseNode {
+  type: NodeType.RELATION;
+  semanticTags: SemanticTag[];  // 专属：语义标签系统
+  participants: ParticipantRef[];
+  relationType: RelationType;
+  attributes: RelationAttributes;
+}
+
+// 其他节点类型不使用结构化标签系统
+interface WorkflowNode extends BaseNode {
+  type: NodeType.WORKFLOW;
+  // 工作流节点有自己的专用属性，不使用标签
+}
+
+interface ComputeNode extends BaseNode {
+  type: NodeType.COMPUTE;
+  // 计算节点有自己的专用属性，不使用标签
+}
+
+interface MediaNode extends BaseNode {
+  type: NodeType.MEDIA;
+  // 媒体节点有自己的专用属性，不使用标签
 }
 ```
 
-### 2. 标签注册系统
+### 2. 类型化标签注册系统
 
-所有结构化标签通过注册表管理，确保数据一致性和语义清晰性：
+不同类型的标签分别管理，确保类型安全和功能分离：
 
 ```typescript
-interface LabelRegistry {
+interface TypedLabelRegistry {
+  // ContentNode 专用：实体标签注册表
   entityLabels: Record<string, EntityLabelDefinition>;
+  
+  // RelationNode 专用：语义标签注册表  
   semanticLabels: Record<string, SemanticLabelDefinition>;
+  
+  // RelationNode 专用：关系类型注册表
   relationTypes: Record<string, RelationTypeDefinition>;
 }
 
@@ -91,10 +114,16 @@ interface RelationTypeDefinition {
 }
 ```
 
-## 实体标签系统
+## ContentNode 专属：实体标签系统
 
 ### 定义与用途
-实体标签用于标识节点的**类型或身份**，明确回答节点"是什么"的问题。
+实体标签是**ContentNode**的专属属性，用于标识内容节点的**类型或身份**，明确回答节点"是什么"的问题。
+
+### 专属性说明
+- **仅适用于**: ContentNode类型节点
+- **不适用于**: RelationNode、WorkflowNode、ComputeNode、MediaNode
+- **搜索集成**: 实体标签参与ContentNode的搜索操作
+- **AI处理**: 实体标签可被AI用于内容生成和实体提取
 
 ### 核心特性
 - **类型标识**: 如 `#论文`、`#实验`、`#人物`、`#工具`
@@ -121,14 +150,17 @@ interface RelationTypeDefinition {
 - `method` (方法): 方法名称、步骤、适用场景、效果
 - `problem` (问题): 问题描述、原因分析、解决方案、状态
 
-### 属性模板系统
+### ContentNode 属性模板系统
+
+实体标签可以为ContentNode提供属性模板，用于初始化节点的attributes字段：
 
 ```typescript
-interface PropertyTemplate {
+interface ContentNodePropertyTemplate {
   fields: PropertyField[];
-  suggested: boolean;                  // 是否建议使用此模板
-  version: string;                     // 模板版本
-  description?: string;                // 模板说明
+  nodeType: NodeType.CONTENT;         // 明确标明适用于内容节点
+  suggested: boolean;
+  version: string;
+  description?: string;
 }
 
 interface PropertyField {
@@ -207,10 +239,16 @@ const paperTemplate: PropertyTemplate = {
 };
 ```
 
-## 语义标签系统
+## RelationNode 专属：语义标签系统
 
 ### 定义与用途
-语义标签用于标识关系的**语义含义**，是图算法与语义查询的基础。
+语义标签是**RelationNode**的专属属性，用于标识关系节点的**语义含义**，是图算法与语义查询的基础。
+
+### 专属性说明
+- **仅适用于**: RelationNode类型节点
+- **不适用于**: ContentNode、WorkflowNode、ComputeNode、MediaNode
+- **关系查询**: 语义标签参与RelationNode的搜索和分析操作
+- **AI处理**: 语义标签可被AI用于关系建议和语义分析
 
 ### 核心特性
 - **关系语义**: 明确关系的含义，如"引用"、"依赖"、"包含"
@@ -284,10 +322,15 @@ const dependsOnLabel: SemanticLabelDefinition = {
 };
 ```
 
-## 关系类型系统
+## RelationNode 专属：关系类型系统
 
 ### 定义与用途
-关系类型用于标识多元关系（关系节点）的结构模式，支持复杂的多参与者关系建模。
+关系类型是**RelationNode**的专属属性，用于标识关系节点的结构模式，支持复杂的多参与者关系建模。
+
+### 与语义标签的区别
+- **关系类型**: 定义关系的结构模式（如"因果链"、"争论结构"）
+- **语义标签**: 定义关系的具体语义（如"支持"、"反对"、"证明"）
+- **协同工作**: 一个RelationNode可以同时具有关系类型和多个语义标签
 
 ### 预设关系类型
 
@@ -310,36 +353,38 @@ const dependsOnLabel: SemanticLabelDefinition = {
 - `evaluation` (评估): 多维度评估
 - `ranking` (排序): 优先级排序关系
 
-## 图算法集成
+## 节点类型化查询集成
 
-### 标签感知查询接口
+### 类型化标签查询接口
 
 ```typescript
-// 基于实体标签的节点查询
-function getNodesByEntityType(
+// 基于实体标签的内容节点查询
+function getContentNodesByEntityType(
   graph: KnowledgeBase, 
   entityTypeId: string
-): Node[]
+): ContentNode[]
 
-// 基于语义标签的关系查询  
-function getEdgesBySemanticLabel(
+// 基于语义标签的关系节点查询
+function getRelationNodesBySemanticLabel(
   graph: KnowledgeBase,
   semanticLabelId: string
-): Edge[]
+): RelationNode[]
 
-// 语义路径查询
-function findSemanticPath(
+// 节点类型感知的语义路径查询
+function findTypedSemanticPath(
   graph: KnowledgeBase,
   fromNodeId: EntityId,
   toNodeId: EntityId,
+  allowedNodeTypes: NodeType[],
   semanticLabels: string[]
 ): Path[]
 
-// 类型化子图提取
-function extractTypedSubgraph(
+// 节点类型和标签的复合子图提取
+function extractNodeTypeAndLabelSubgraph(
   graph: KnowledgeBase,
-  entityTypes: string[],
-  semanticTypes: string[]
+  nodeTypes: NodeType[],
+  entityTypes?: string[],    // 仅对ContentNode有效
+  semanticTypes?: string[]   // 仅对RelationNode有效
 ): Subgraph
 
 // 基于标签的邻居查询
@@ -378,19 +423,44 @@ function generateInverseRelations(
 ): Edge[]
 ```
 
-## 用户界面设计
+## 节点类型化用户界面设计
 
-### 标签输入体验
+### 差异化标签输入体验
 
-#### 结构化标签选择
-- **实体标签**: 下拉选择 + 搜索，显示图标和描述
-- **语义标签**: 上下文感知推荐，基于源目标节点类型
-- **关系类型**: 参与者数量感知推荐
+#### ContentNode 的实体标签选择
+- **专属界面**: 仅在编辑ContentNode时显示
+- **类型感知**: 基于内容分析推荐合适的实体标签
+- **模板触发**: 选择实体标签后自动应用属性模板
 
-#### 通用标签输入
-- **自动补全**: 基于历史标签和智能推荐
-- **标签云**: 常用标签的可视化展示
-- **批量编辑**: 支持多选批量添加/移除标签
+#### RelationNode 的语义标签选择  
+- **专属界面**: 仅在编辑RelationNode时显示
+- **参与者感知**: 基于参与者类型推荐语义标签
+- **关系类型联动**: 关系类型选择影响语义标签推荐
+
+#### 其他节点类型
+- **WorkflowNode**: 显示工作流专用的状态和属性编辑器
+- **ComputeNode**: 显示公式编辑器和依赖管理界面
+- **MediaNode**: 显示媒体信息和元数据编辑界面
+
+### 类型化操作分发
+
+```typescript
+// 标签操作根据节点类型分发
+interface NodeTypeLabelOperations {
+  // ContentNode 专用操作
+  addEntityTag(node: ContentNode, entityTag: EntityTag): void;
+  removeEntityTag(node: ContentNode, tagId: string): void;
+  applyEntityTemplate(node: ContentNode, templateId: string): void;
+  
+  // RelationNode 专用操作
+  addSemanticTag(node: RelationNode, semanticTag: SemanticTag): void;
+  removeSemanticTag(node: RelationNode, tagId: string): void;
+  setRelationType(node: RelationNode, relationType: RelationType): void;
+  
+  // 其他节点类型不支持标签操作
+  // WorkflowNode, ComputeNode, MediaNode 有各自的专用操作
+}
+```
 
 ### 标签管理界面
 
@@ -477,4 +547,31 @@ interface LabelIndex {
 - 智能推荐的准确性
 - 标签管理的易用性
 
-这个标签系统设计为知识图谱提供了强大的语义基础，既保持了用户友好的标签体验，又为高级的图算法和知识推理奠定了坚实基础。
+## 节点类型化标签系统优势
+
+### 1. **类型安全**
+- 实体标签只能应用于ContentNode，避免类型错误
+- 语义标签只能应用于RelationNode，确保语义一致性
+- 编译时类型检查，减少运行时错误
+
+### 2. **功能专用**
+- 不同节点类型的标签有不同的功能和操作
+- AI操作可以基于节点类型和标签类型进行精准分发
+- 搜索系统可以按节点类型和标签类型优化查询
+
+### 3. **界面简洁**
+- 用户界面根据节点类型显示相关的标签控件
+- 避免无关标签选项的干扰
+- 提供最相关的标签推荐
+
+### 4. **扩展性强**
+- 新的节点类型可以定义自己的标签系统
+- 插件可以为特定节点类型添加专用标签
+- 标签系统与节点类型协同演进
+
+### 5. **性能优化**
+- 标签查询可以先按节点类型过滤，减少搜索范围
+- 索引可以按节点类型和标签类型分别建立
+- 缓存策略可以基于类型进行优化
+
+这种**节点类型化标签系统**将标签的语义价值与节点的功能价值完美结合，为不同类型的知识实体提供了专门化的标注和管理能力。

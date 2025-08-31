@@ -1,53 +1,97 @@
 # 系统架构设计
 
-## 分层架构核心理念
+## Electron桌面应用架构
 
-系统采用**三层分离架构**，实现知识语义的纯净性与白板交互的灵活性完美结合：
+### 跨平台桌面应用设计
 
-```
-知识层（语义）→ 视图层（表现）→ 装饰层（无语义）
-    ↓             ↓            ↓
-  Node/Edge     Shape/Style   Drawing/Sticker
-     ↓             ↓            ↓
-   AI理解        多视图呈现     视觉装饰
-```
-
-### 架构设计优势
-- **语义纯净**: 知识层不被视觉元素污染，AI可专注语义操作
-- **交互灵活**: 白板层完全自由，支持任意视觉表现
-- **渐进增强**: 从简单绘制到复杂知识建模的平滑过渡
-- **AI协作**: 大模型在知识层深度参与，视图层自动适配
-
-## 整体架构概览
+基于Electron的AI知识图谱桌面应用，提供原生应用体验和本地数据安全。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    装饰层 (Decoration Layer)                  │
+│                   Electron应用架构                          │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │  主进程      │    │  渲染进程    │    │  原生集成    │     │
+│  │ (Main)      │    │(Renderer)  │    │ (Native)   │     │
+│  │             │    │             │    │             │     │
+│  │• 应用生命周期  │    │• React前端   │    │• 文件系统    │     │
+│  │• 窗口管理    │    │• AI交互界面  │    │• 系统托盘    │     │
+│  │• IPC通信     │    │• 图谱渲染    │    │• 全局快捷键  │     │
+│  │• 安全存储    │    │• 状态管理    │    │• 自动更新    │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Electron特定优势
+
+#### 1. 原生桌面体验
+- **系统级快捷键**: Cmd+Space唤起AI助手等全局快捷键
+- **文件关联**: .graph文件双击自动打开
+- **系统托盘**: 后台运行，随时调用
+- **原生窗口**: 系统原生外观和操作
+
+#### 2. 数据安全与隐私
+- **本地存储**: 所有用户数据完全本地化
+- **加密API密钥**: 系统级安全存储API密钥
+- **离线可用**: 核心编辑功能无需网络
+- **自动备份**: 本地增量备份机制
+
+#### 3. AI集成优势
+- **多模型支持**: OpenAI、Claude、本地模型灵活切换
+- **请求缓存**: 本地缓存AI响应，节省成本
+- **使用统计**: 本地跟踪AI使用量和费用
+- **隐私保护**: AI请求通过主进程，增强安全性
+
+## 分层架构核心理念
+
+基于**节点类型化架构**，系统采用**三层分离设计**，实现知识语义、功能应用与视觉呈现的完美分离：
+
+```
+知识层（语义实体）→ 功能层（功能实体）→ 视图层（表现）
+    ↓                  ↓               ↓
+ContentNode/         WorkflowNode/    Layout/Style/
+RelationNode/        ComputeNode/     UI/Temp
+Edge                 MediaNode
+     ↓                  ↓               ↓
+   AI理解             专用功能         多视图呈现
+```
+
+### 架构设计优势
+- **语义纯净**: 知识层只包含真正的知识实体，AI可专注语义操作
+- **功能分层**: 功能层承载应用逻辑，与知识语义分离
+- **类型安全**: 节点类型化设计确保操作的精确性和安全性
+- **AI协作**: 大模型根据实体层级选择合适的处理策略
+
+## 节点类型化架构概览
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      视图层 (View Layer)                      │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │
-│  │  自由绘制    │  │  贴纸表情    │  │     批注高亮         │   │
-│  │ (Drawing)   │  │ (Sticker)   │  │  (Annotation)      │   │
+│  │  白板视图    │  │  线性视图    │  │   临时元素管理       │   │
+│  │(Whiteboard) │  │ (Linear)    │  │ (Temp Elements)   │   │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
-│                     视图层 (View Layer)                      │
+│                    功能层 (Functional Layer)                  │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │
-│  │  白板视图    │  │  线性视图    │  │     媒体视图         │   │
-│  │(Whiteboard) │  │ (Linear)    │  │    (Media)         │   │
+│  │  工作流节点   │  │   计算节点   │  │     媒体节点         │   │
+│  │(WorkflowNode)│ │(ComputeNode)│  │  (MediaNode)       │   │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │                    交互控制层 (Interaction)                   │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │
-│  │  命令系统    │  │ AI协作引擎   │  │     插件管理         │   │
-│  │ (Command)   │  │ (AI Engine) │  │   (Plugin Mgr)     │   │
+│  │  命令系统    │  │ AI协作引擎   │  │   Obsidian风格     │   │
+│  │ (Command)   │  │ (AI Engine) │  │   插件系统         │   │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │                    知识层 (Knowledge Layer)                   │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐   │
-│  │    节点      │  │     边      │  │     关系节点         │   │
-│  │   (Node)    │  │   (Edge)    │  │ (RelationNode)     │   │
+│  │   内容节点    │  │   关系节点   │  │       简单边         │   │
+│  │(ContentNode)│  │(RelationNode)│ │     (Edge)         │   │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -84,79 +128,566 @@
 - **响应式适配**: 支持不同设备和屏幕尺寸
 - **插件扩展**: 支持第三方视图格式插件
 
-### 3. 装饰层 (Decoration Layer) - 纯视觉
-
-#### 装饰元素
-- **自由绘制**: 手绘线条、涂鸦、标记
-- **贴纸表情**: 视觉装饰元素、情感表达
-- **批注高亮**: 临时标记、重点突出
-- **视觉辅助**: 引导线、框选、分组视觉提示
-
-#### 装饰特性
-- **无语义**: 不进入知识层，不影响AI理解
-- **视图专属**: 每个视图独立的装饰层
-- **可选持久化**: 根据需要决定是否保存
-- **实时协作**: 支持多用户共同装饰
-
-### 4. 交互控制层 (Interaction Layer)
+### 3. 交互控制层 (Interaction Layer)
 
 #### 核心组件
 - **命令系统**: 统一的操作入口，支持撤销/重做
 - **AI协作引擎**: 大模型深度集成，智能辅助操作  
 - **插件管理**: 动态加载、热插拔的功能扩展
 #### AI协作引擎架构
+
+核心价值：**AI直接操作白板，用自然语言创建知识结构**
+
 ```typescript
 interface AICollaborationEngine {
-  // 智能关系建议
+  // 🎯 核心功能：自然语言图谱操作
+  naturalLanguageOperations: {
+    // 一句话创建整个知识结构
+    createKnowledgeStructure(prompt: string): Promise<GraphOperation[]>;
+    
+    // 智能节点和关系生成
+    parseUserIntent(input: string): Promise<AIOperation[]>;
+    
+    // 实时图谱操作
+    executeGraphCommands(operations: AIOperation[]): Promise<CommandResult[]>;
+  };
+  
+  // 🧠 智能关系建议
   relationSuggestion: {
     analyzeContent(nodes: Node[]): RelationSuggestion[];
     suggestConnections(context: KnowledgeBase): Edge[];
     detectPatterns(graph: KnowledgeGraph): Pattern[];
+    autoLayout(nodes: Node[], edges: Edge[]): LayoutSuggestion;
   };
   
-  // 内容智能生成
+  // ✨ 内容智能生成  
   contentGeneration: {
     generateNode(prompt: string, context: Node[]): Node;
     expandContent(node: Node, direction: string): Block[];
     summarizeGraph(view: View): string;
+    generateRelationContent(edge: Edge): RelationDescription;
   };
   
-  // 知识优化
+  // 🔄 知识优化
   knowledgeOptimization: {
     optimizeStructure(kb: KnowledgeBase): OptimizationSuggestion[];
     detectDuplicates(nodes: Node[]): DuplicateGroup[];
     suggestCategories(nodes: Node[]): Category[];
+    improveConnections(graph: Graph): ConnectionImprovement[];
+  };
+  
+  // 🎛️ AI配置和模型管理
+  modelConfiguration: {
+    setAPIKey(provider: 'openai' | 'anthropic', key: string): void;
+    configureModel(model: AIModel): void;
+    adjustParameters(params: AIParameters): void;
   };
 }
 ```
 
-#### 插件系统架构
+#### AI操作的"魔法瞬间"实现
+
+**用户体验目标**：用一句话，让AI创建并连接多个节点，构建完整知识结构
+
 ```typescript
-interface PluginSystem {
-  // 插件生命周期
-  lifecycle: {
-    install(plugin: Plugin): Promise<void>;
-    activate(pluginId: string): Promise<void>;
-    deactivate(pluginId: string): Promise<void>;
-    uninstall(pluginId: string): Promise<void>;
+// 用户输入："创建一个关于人工智能的知识图谱"
+// AI输出：
+interface AIGraphCreationExample {
+  input: "创建一个关于人工智能的知识图谱";
+  
+  aiResponse: {
+    operations: [
+      {
+        type: 'create_node',
+        params: {
+          nodeType: 'content',
+          title: '人工智能',
+          content: '人工智能(AI)是计算机科学的一个分支...',
+          position: { x: 200, y: 100 }
+        }
+      },
+      {
+        type: 'create_node',
+        params: {
+          nodeType: 'content', 
+          title: '机器学习',
+          content: '机器学习是AI的核心技术...',
+          position: { x: 100, y: 250 }
+        }
+      },
+      {
+        type: 'create_edge',
+        params: {
+          sourceId: '人工智能',
+          targetId: '机器学习', 
+          relationType: 'contains'
+        }
+      }
+      // ... 更多操作
+    ],
+    explanation: '我为你创建了人工智能知识图谱，包含主要分支和核心概念的连接关系。'
+  }
+}
+```
+
+#### AI与命令系统集成架构
+
+```typescript
+interface AICommandIntegration {
+  // AI操作转换为可撤销命令
+  aiToCommand: {
+    convertOperation(operation: AIOperation): ReversibleCommand;
+    batchConvert(operations: AIOperation[]): ReversibleCommand[];
+    validateOperations(operations: AIOperation[]): ValidationResult;
   };
   
-  // 插件类型
-  pluginTypes: {
-    aiFunction: AIFunctionPlugin;    // AI功能插件
-    viewRenderer: ViewPlugin;       // 自定义视图
-    dataSource: DataSourcePlugin;   // 数据源集成
-    export: ExportPlugin;          // 导出格式
+  // 命令执行与AI反馈
+  commandExecution: {
+    executeWithFeedback(commands: ReversibleCommand[]): Promise<AIFeedback>;
+    handlePartialFailure(results: CommandResult[]): Promise<RecoveryPlan>;
+    provideExecutionSummary(results: CommandResult[]): ExecutionSummary;
   };
   
-  // 插件通信
-  messaging: {
-    emit(event: PluginEvent): void;
-    subscribe(event: string, handler: Function): void;
-    requestPermission(permission: string): Promise<boolean>;
+  // AI上下文管理
+  contextManagement: {
+    maintainConversationContext(history: AIInteraction[]): AIContext;
+    trackGraphChanges(before: Graph, after: Graph): ChangeContext;
+    suggestFollowUpActions(context: AIContext): FollowUpSuggestion[];
   };
 }
 ```
+
+## Obsidian风格插件系统架构
+
+### 插件系统核心设计
+
+借鉴Obsidian的成功经验，Graph-cc采用**社区驱动的插件生态**，支持灵活扩展和第三方开发：
+
+```typescript
+interface GraphPluginSystem {
+  // 插件分类体系
+  pluginCategories: {
+    // 核心插件（官方维护）
+    corePlugins: CorePlugin[];
+    // 社区插件（社区开发）
+    communityPlugins: CommunityPlugin[];
+    // 主题插件（视觉定制）
+    themePlugins: ThemePlugin[];
+  };
+  
+  // 插件能力接口
+  pluginCapabilities: {
+    // UI扩展能力
+    uiExtensions: UIExtensionAPI;
+    // 数据访问能力
+    dataAccess: DataAccessAPI;
+    // 节点类型扩展
+    nodeTypeExtensions: NodeTypeAPI;
+    // AI功能扩展
+    aiFunctionExtensions: AIFunctionAPI;
+  };
+  
+  // 插件管理系统
+  pluginManager: {
+    // 插件发现和安装
+    discovery: PluginDiscoveryService;
+    // 生命周期管理
+    lifecycle: PluginLifecycleManager;
+    // 权限和沙箱
+    security: PluginSecurityManager;
+    // 插件通信
+    messaging: PluginMessageBus;
+  };
+}
+```
+
+### 插件能力范围设计
+
+#### 1. UI扩展能力
+```typescript
+interface UIExtensionAPI {
+  // 主要面板扩展
+  panels: {
+    leftRibbon: RibbonActionAPI;      // 左侧工具栏
+    rightSidebar: SidebarPaneAPI;     // 右侧面板
+    statusBar: StatusBarItemAPI;      // 状态栏
+    commandPalette: CommandAPI;       // 命令面板
+  };
+  
+  // 编辑器扩展
+  editor: {
+    nodeEditors: NodeEditorAPI;       // 节点编辑器扩展
+    toolbars: ToolbarAPI;             // 工具栏扩展
+    contextMenus: ContextMenuAPI;     // 右键菜单
+    shortcuts: ShortcutAPI;           // 快捷键
+  };
+  
+  // 视图扩展
+  views: {
+    customViews: ViewRendererAPI;     // 自定义视图
+    layoutEngines: LayoutAPI;         // 布局算法
+    visualEffects: EffectAPI;         // 视觉效果
+  };
+}
+```
+
+#### 2. 数据访问能力
+```typescript
+interface DataAccessAPI {
+  // 知识库访问
+  knowledgeBase: {
+    // 节点操作
+    nodes: {
+      create: (type: NodeType, data: NodeData) => Promise<BaseNode>;
+      update: (nodeId: EntityId, updates: Partial<BaseNode>) => Promise<void>;
+      delete: (nodeId: EntityId) => Promise<void>;
+      query: (criteria: QueryCriteria) => Promise<BaseNode[]>;
+    };
+    
+    // 关系操作
+    relations: {
+      createEdge: (from: EntityId, to: EntityId, label?: string) => Promise<Edge>;
+      createRelation: (participants: EntityId[], type: string) => Promise<RelationNode>;
+      queryPaths: (from: EntityId, to: EntityId) => Promise<Path[]>;
+    };
+    
+    // 视图操作
+    views: {
+      getCurrentView: () => View;
+      switchView: (viewId: EntityId) => Promise<void>;
+      createView: (config: ViewConfig) => Promise<View>;
+    };
+  };
+  
+  // 元数据缓存
+  metadata: {
+    getNodeMetadata: (nodeId: EntityId) => CachedMetadata;
+    getRelationships: () => Record<EntityId, RelationshipCache>;
+    getTags: () => Record<string, TagUsage>;
+    getBacklinks: (nodeId: EntityId) => BacklinkCache[];
+  };
+}
+```
+
+#### 3. 节点类型扩展能力
+```typescript
+interface NodeTypeAPI {
+  // 注册新节点类型
+  registerNodeType<T extends BaseNode>(definition: NodeTypeDefinition<T>): void;
+  
+  // 节点类型定义
+  NodeTypeDefinition: {
+    typeName: string;
+    displayName: string;
+    icon: string;
+    
+    // 创建逻辑
+    createNode: (params: CreateNodeParams) => T;
+    
+    // 渲染组件
+    components: {
+      editor: React.ComponentType<NodeEditorProps<T>>;
+      renderer: React.ComponentType<NodeRendererProps<T>>;
+      toolbar: React.ComponentType<NodeToolbarProps<T>>;
+      inspector: React.ComponentType<NodeInspectorProps<T>>;
+    };
+    
+    // 支持的操作
+    operations: {
+      search: (node: T, query: string) => SearchResult[];
+      export: (node: T, format: string) => ExportData;
+      ai: (node: T, operation: AIOperation) => Promise<AIResult>;
+    };
+  };
+}
+```
+
+#### 4. AI功能扩展能力
+```typescript
+interface AIFunctionAPI {
+  // 注册AI功能
+  registerAIFunction(definition: AIFunctionDefinition): void;
+  
+  // AI功能定义
+  AIFunctionDefinition: {
+    name: string;
+    description: string;
+    category: 'content' | 'relation' | 'analysis' | 'automation';
+    
+    // 适用的节点类型
+    supportedNodeTypes: NodeType[];
+    
+    // 执行接口
+    execute: (params: AIFunctionParams, context: KnowledgeContext) => Promise<AIFunctionResult>;
+    
+    // 流式执行（可选）
+    executeStream?: (params: AIFunctionParams) => AsyncGenerator<PartialResult, FinalResult>;
+    
+    // 配置界面
+    settingsComponent?: React.ComponentType<AIFunctionSettingsProps>;
+  };
+  
+  // AI提供商集成
+  aiProviders: {
+    registerProvider: (provider: AIProvider) => void;
+    getAvailableProviders: () => AIProvider[];
+    setDefaultProvider: (providerId: string) => void;
+  };
+}
+```
+
+### 插件分类和功能示例
+
+#### 1. 核心插件类型
+```typescript
+// 官方维护的核心插件
+interface CorePlugins {
+  // 知识管理核心
+  knowledgeCore: {
+    graphAnalysis: GraphAnalysisPlugin;      // 图分析
+    contentSearch: ContentSearchPlugin;      // 内容搜索
+    backlinks: BacklinksPlugin;             // 反向链接
+    tags: TagManagerPlugin;                 // 标签管理
+  };
+  
+  // AI协作核心
+  aiCore: {
+    relationSuggestion: RelationSuggestionPlugin;  // 关系建议
+    contentGeneration: ContentGenerationPlugin;    // 内容生成
+    knowledgeOptimization: OptimizationPlugin;     // 知识优化
+  };
+  
+  // 视图核心
+  viewCore: {
+    whiteboardView: WhiteboardPlugin;       // 白板视图
+    linearView: LinearViewPlugin;           // 线性视图
+    mediaView: MediaViewPlugin;             // 媒体视图
+  };
+}
+```
+
+#### 2. 社区插件分类
+```typescript
+interface CommunityPluginCategories {
+  // 编辑增强类
+  editingEnhancement: {
+    advancedEditor: TipTapAdvancedPlugin;   // 高级编辑器
+    templates: TemplatePlugin;              // 模板系统
+    textExpander: TextExpanderPlugin;       // 文本扩展
+    mathEditor: MathEditorPlugin;           // 数学公式编辑
+  };
+  
+  // 知识管理类
+  knowledgeManagement: {
+    spacedRepetition: SpacedRepetitionPlugin;  // 间隔重复
+    flashcards: FlashcardPlugin;               // 闪卡
+    citation: CitationPlugin;                  // 引用管理
+    bibliography: BibliographyPlugin;          // 文献管理
+  };
+  
+  // 可视化增强类
+  visualization: {
+    mindMap: MindMapPlugin;                 // 思维导图
+    timeline: TimelinePlugin;               // 时间线
+    kanban: KanbanPlugin;                  // 看板
+    calendar: CalendarPlugin;              // 日历视图
+    charts: ChartsPlugin;                  // 图表生成
+  };
+  
+  // 工作流集成类
+  workflowIntegration: {
+    taskManagement: TaskManagerPlugin;      // 任务管理
+    projectPlanning: ProjectPlanPlugin;     // 项目规划
+    timeTracking: TimeTrackingPlugin;       // 时间追踪
+    automation: AutomationPlugin;           // 自动化
+  };
+  
+  // 外部集成类
+  externalIntegration: {
+    git: GitIntegrationPlugin;              // Git集成
+    cloud: CloudSyncPlugin;                 // 云同步
+    api: APIConnectorPlugin;                // API连接器
+    database: DatabasePlugin;               // 数据库连接
+  };
+  
+  // AI专业化类
+  aiSpecialization: {
+    codeAnalysis: CodeAnalysisPlugin;       // 代码分析AI
+    academicWriting: AcademicWritingPlugin; // 学术写作AI
+    businessAnalysis: BusinessAnalysisPlugin; // 商业分析AI
+    creativeWriting: CreativeWritingPlugin; // 创意写作AI
+  };
+}
+```
+
+### 插件开发框架
+
+#### 1. 插件基础结构
+```typescript
+// 插件主类
+export default class MyPlugin extends GraphPlugin {
+  settings: MyPluginSettings;
+  
+  async onload() {
+    // 插件加载时执行
+    await this.loadSettings();
+    
+    // 注册命令
+    this.addCommand({
+      id: 'my-plugin-command',
+      name: 'My Plugin Command',
+      callback: () => this.executeCommand(),
+      hotkeys: [{ modifiers: ['Mod'], key: 'k' }]
+    });
+    
+    // 注册UI组件
+    this.addRibbonIcon('my-icon', 'My Plugin', () => {
+      this.openPluginView();
+    });
+    
+    // 注册节点类型（如果需要）
+    this.registerNodeType({
+      typeName: 'my-custom-node',
+      displayName: 'My Custom Node',
+      createNode: this.createCustomNode.bind(this),
+      components: {
+        editor: CustomNodeEditor,
+        renderer: CustomNodeRenderer
+      }
+    });
+  }
+  
+  onunload() {
+    // 插件卸载时执行清理
+    this.cleanup();
+  }
+  
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+  
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+}
+```
+
+#### 2. 插件配置系统
+```typescript
+class PluginSettingsTab extends PluginSettingTab {
+  constructor(app: App, plugin: MyPlugin) {
+    super(app, plugin);
+  }
+  
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    
+    // API配置
+    new Setting(containerEl)
+      .setName('API Key')
+      .setDesc('Enter your API key for external services')
+      .addText(text => text
+        .setValue(this.plugin.settings.apiKey)
+        .onChange(async (value) => {
+          this.plugin.settings.apiKey = value;
+          await this.plugin.saveSettings();
+        }));
+    
+    // 功能开关
+    new Setting(containerEl)
+      .setName('Enable Advanced Features')
+      .setDesc('Enable advanced plugin features')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.enableAdvanced)
+        .onChange(async (value) => {
+          this.plugin.settings.enableAdvanced = value;
+          await this.plugin.saveSettings();
+        }));
+  }
+}
+```
+
+### 插件生态管理
+
+#### 1. 插件发现和安装
+```typescript
+interface PluginDiscoveryService {
+  // 插件市场
+  marketplace: {
+    searchPlugins: (query: string, filters: SearchFilters) => Promise<PluginSearchResult[]>;
+    getPluginDetails: (pluginId: string) => Promise<PluginDetails>;
+    getPluginReviews: (pluginId: string) => Promise<PluginReview[]>;
+    installPlugin: (pluginId: string) => Promise<InstallResult>;
+  };
+  
+  // 插件分类
+  categories: {
+    listCategories: () => PluginCategory[];
+    getPluginsByCategory: (categoryId: string) => Promise<Plugin[]>;
+    getFeaturedPlugins: () => Promise<Plugin[]>;
+    getRecommendedPlugins: (userProfile: UserProfile) => Promise<Plugin[]>;
+  };
+  
+  // 更新管理
+  updates: {
+    checkForUpdates: () => Promise<PluginUpdate[]>;
+    updatePlugin: (pluginId: string) => Promise<UpdateResult>;
+    autoUpdateEnabled: (pluginId: string) => boolean;
+    setAutoUpdate: (pluginId: string, enabled: boolean) => void;
+  };
+}
+```
+
+#### 2. 插件质量保证
+```typescript
+interface PluginQualityAssurance {
+  // 代码审查
+  codeReview: {
+    securityScan: (pluginCode: string) => SecurityScanResult;
+    performanceAnalysis: (plugin: Plugin) => PerformanceReport;
+    compatibilityCheck: (plugin: Plugin, version: string) => CompatibilityResult;
+  };
+  
+  // 社区评价
+  communityFeedback: {
+    ratings: PluginRating[];
+    reviews: PluginReview[];
+    reportIssue: (pluginId: string, issue: IssueReport) => Promise<void>;
+    flagContent: (pluginId: string, reason: string) => Promise<void>;
+  };
+  
+  // 官方认证
+  certification: {
+    verifiedDeveloper: boolean;
+    officialPlugin: boolean;
+    securityCertified: boolean;
+    performanceCertified: boolean;
+  };
+}
+```
+
+### 插件系统优势
+
+#### 1. **开发者友好**
+- 完整的API文档和开发工具
+- 热重载开发环境
+- TypeScript类型安全
+- 丰富的示例和模板
+
+#### 2. **用户体验**
+- 一键安装和管理
+- 细粒度权限控制
+- 自动更新和回滚
+- 个性化推荐
+
+#### 3. **生态健康**
+- 开源社区驱动
+- 质量保证机制
+- 开发者激励
+- 长期维护支持
+
+这种Obsidian风格的插件系统将为Graph-cc提供强大的扩展能力，让社区能够贡献各种专业化的功能，同时保持核心系统的稳定性和简洁性。
 
 #### 状态管理架构
 ```typescript
@@ -200,31 +731,39 @@ GraphStore {
 }
 ```
 
-### 3. 命令系统层 (Command System)
+### 3. 事件-命令系统层 (Event-Command System)
 
-#### 命令模式实现
+#### Event Sourcing 架构
+基于事件溯源模式，事件作为状态记录和撤销/重做的基础：
+
 ```typescript
-Command Pattern {
-  // 命令注册
-  CommandRegistry.register(commandType, handler)
+Event Sourcing Pattern {
+  // 命令执行 → 事件生成 → 状态变更
+  command → events → state_change
   
-  // 命令执行
-  commandSystem.execute(command)
+  // 事件存储（历史记录）
+  eventStore: DomainEvent[]
   
-  // 撤销重做
-  commandSystem.undo()
-  commandSystem.redo()
+  // 撤销/重做栈
+  undoStack: DomainEvent[]
+  redoStack: DomainEvent[]
   
-  // 中间件支持
-  middleware: [logging, validation, persistence]
+  // 状态重建
+  rebuildState(events) → currentState
 }
 ```
 
+#### 核心原理
+- **命令包含撤销逻辑**：每个命令知道如何执行和撤销自己的操作
+- **事件记录操作历史**：事件用于审计、通知和历史记录，不包含撤销逻辑
+- **撤销栈存储命令**：撤销/重做基于命令对象，而非事件回溯
+- **高内聚设计**：命令的执行和撤销逻辑紧密关联，便于维护和扩展
+
 #### 命令类型分类
-- **node-commands**: 节点的 CRUD 操作
-- **edge-commands**: 边的创建、修改、删除
-- **block-commands**: 内容块的操作
-- **view-commands**: 视图和布局管理
+- **node-commands**: 节点的 CRUD 操作，产生节点相关事件
+- **edge-commands**: 边的创建、修改、删除，产生关系事件  
+- **block-commands**: 内容块的操作，产生内容事件
+- **view-commands**: 视图和布局管理，产生视图事件
 
 ### 4. 组件架构层 (Component Architecture)
 
